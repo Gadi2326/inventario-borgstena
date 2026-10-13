@@ -32,19 +32,12 @@ Arriba en tu proyecto, botón **Connect** (o **Project Settings → API Keys**):
 Mándamelos por el chat (estas dos son públicas, están hechas para ir dentro de la app).
 ⚠️ **Nunca** mandes ni pegues la **service_role** / **secret key** ni la contraseña de la base de datos.
 
-## Parte B · Subir la app a internet (Netlify, gratis)
+## Parte B · La página en internet
 
-> Hazlo **después** de que yo ponga tus datos de conexión en `js/config.js`.
+Ya está publicada con **GitHub Pages**: **https://gadi2326.github.io/inventario-borgstena/**
 
-1. Crea una cuenta en **netlify.com** (puedes entrar con tu correo o GitHub).
-2. Ve a **app.netlify.com/drop**.
-3. **Arrastra la carpeta `app para trabajo` completa** a la página.
-4. Te da una dirección como `https://nombre-raro-123.netlify.app`.
-   Cámbiale el nombre en **Site configuration → Change site name** (ej. `inventario-borgstena`).
-5. Abre esa dirección en tu celular → entra con tu correo y contraseña.
-   En el menú del navegador elige **"Agregar a pantalla de inicio"** para tenerla como app.
-
-**Cada vez que yo cambie algo**, se vuelve a arrastrar la carpeta en Netlify (pestaña **Deploys** → arrastrar la carpeta).
+- Cada vez que se suben cambios a GitHub, la página se actualiza sola en 1–2 minutos.
+- En el celular: abre la dirección → menú del navegador → **"Agregar a pantalla de inicio"**.
 
 ## Notas
 - La primera vez que alguien entra, si la nube está vacía, se cargan los catálogos y los **datos de prueba**.

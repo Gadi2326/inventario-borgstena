@@ -4,7 +4,7 @@ App web de inventario para el almacén de foam (y después tela / vinil / backin
 
 - **Probar en tu PC:** doble clic a `Abrir app.bat` → ver [COMO_PROBAR.md](COMO_PROBAR.md)
 - **Nube (Supabase) y publicar:** ver [PASOS_NUBE.md](PASOS_NUBE.md)
-- **Publicación:** cada cambio que se sube a la rama `main` de GitHub se publica solo en Netlify.
+- **Página publicada:** https://gadi2326.github.io/inventario-borgstena/ (GitHub Pages: cada cambio que se sube a `main` se publica solo en 1–2 minutos).
 
 Los datos de prueba incluidos son **inventados**.
 
