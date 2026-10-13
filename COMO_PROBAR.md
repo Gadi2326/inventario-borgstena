@@ -30,6 +30,14 @@ Son **inventados** (lotes `Z-9xx`, facturas `DEMO-…`), no son de la planta.
 3. Revisa la tabla **Rollos por número de parte y lote**: cuenta sola lo que antes contabas a pluma.
 4. Toca **✅ Terminar recepción**. Los que no escaneaste quedan como **Faltantes**.
 
+### 1a. Recibir con FOTO A LA ETIQUETA (lo más confiable)
+1. Crea la recepción solo con el encabezado (PO, factura…).
+2. Toca **📷 Foto a la etiqueta** y tómale foto a la etiqueta del rollo: de frente, sin brillo, con los 3 códigos de barras y el cuadrito completos.
+3. La app lee **número de rollo, lote, número de parte, metros y fecha de producción** de una sola foto.
+4. Para ir más rápido: toma las fotos de todos los rollos con la cámara normal del celular y luego elígelas juntas con **🖼️ Varias fotos de la galería**.
+5. Si una foto no deja leer el número de rollo, la app guarda lo demás y te pide **escribirlo o escanearlo**.
+6. En **🧾 Total general de la hoja** escribe los rollos y metros del papel para comparar.
+
 ### 1b. Cargar una lista nueva rápido (foto → texto)
 1. **🚚 Recepción → Nueva recepción** → abre **⚡ Llenar rápido con una foto de la lista**.
 2. En el celular, toma foto a la lista con **Google Lens** (Android) o la **cámara del iPhone** y toca **Copiar texto**.

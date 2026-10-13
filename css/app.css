@@ -108,6 +108,10 @@ h3 { font-size: 1rem; margin: 18px 0 8px; }
 .scan-input { font-size: 1.25rem; min-height: 60px; font-family: ui-monospace, Consolas, monospace; border: 2px solid var(--azul2); }
 .btn-cam { min-height: 60px; white-space: nowrap; }
 .scan-card { border: 2px solid var(--azul2); }
+.botones-foto { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 8px 0 14px; }
+.botones-foto .btn-grande { margin: 0; }
+.tip { font-size: .88rem; color: var(--muted); background: var(--gris-bg); padding: 8px 10px; border-radius: 8px; margin: -6px 0 12px; }
+.resultado-escaneo { white-space: pre-line; }
 .resultado-escaneo { margin-top: 10px; padding: 14px; border-radius: 10px; font-size: 1.1rem; font-weight: 600; }
 .resultado-escaneo.ok { background: var(--verde-bg); color: var(--verde); }
 .resultado-escaneo.warn { background: var(--amarillo-bg); color: var(--amarillo); }

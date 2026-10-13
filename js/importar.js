@@ -67,15 +67,18 @@ function parsearListaTexto(texto) {
     const partes = [...linea.matchAll(RE_PARTE)].map((m) => m[1]).filter((p) => !/^TOTAL/.test(p));
     const md = RE_DESC.exec(linea);
     const despues = linea.slice(mr[0].index + mr[0][0].length);
-    const mLargo = /^\D*?(\d{2,4}(?:[.,]\d+)?)/.exec(despues);
+    // El primer número entero después del rollo es el largo (no el peso, que trae decimales)
+    const mLargo = /^\D*?(\d{2,4})(?![\d.,])/.exec(despues);
     const desc = md ? limpiarDesc(md[1]) : '';
     const pd = desc ? parseDescripcion(desc) : null;
+    // Si el largo leído no coincide con el de la descripción, se confía en la descripción
+    const largoLeido = mLargo ? Number(mLargo[1]) : null;
     filas.push({
       no_rollo,
       lote: lotes.length ? loteDeMatch(lotes[0]) : (parseNoRollo(no_rollo) || {}).lote || '',
       parte: partes.length ? parteParecida(partes[0], desc) : '',
       descripcion: desc,
-      largo: mLargo ? Number(mLargo[1].replace(',', '.')) : pd ? pd.largo_m : null,
+      largo: pd && pd.largo_m ? pd.largo_m : largoLeido,
     });
   }
   let modo = 'renglones';
@@ -114,9 +117,7 @@ function parsearListaTexto(texto) {
     }
   }
 
-  // Si falta el número de parte pero hay descripción, se busca otra fila con la misma descripción
-  const porDesc = new Map(filas.filter((f) => f.parte && f.descripcion).map((f) => [f.descripcion, f.parte]));
-  for (const f of filas) if (!f.parte && porDesc.has(f.descripcion)) f.parte = porDesc.get(f.descripcion);
+  deducirFaltantes(filas, enc.proveedor);
   // La letra del lote y del rollo deben coincidir (el lector a veces lee I como 1)
   for (const f of filas) {
     const pr = parseNoRollo(f.no_rollo);
@@ -129,6 +130,44 @@ function parsearListaTexto(texto) {
   if (mt) totales = { metros: Number(mt[1].replace(/,/g, '')), rollos: Number(mt[2]), kg: Number(mt[3].replace(/,/g, '')) };
 
   return { encabezado: enc, filas, totales, modo };
+}
+
+// Cuando Google Lens no leyó el número de parte o los metros, se deducen de lo que sí leyó.
+// Lo deducido queda marcado para que la persona lo revise.
+function deducirFaltantes(filas, proveedor) {
+  const masComun = (vals) => {
+    const c = new Map();
+    for (const v of vals) if (v) c.set(v, (c.get(v) || 0) + 1);
+    return [...c.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  };
+  const marcar = (f, campo, valor, como) => { f[campo] = valor; (f.deducido = f.deducido || []).push(`${campo === 'parte' ? 'No. parte' : 'metros'} ${como}`); };
+  const partes = Store.all('partes').filter((p) => p.activa !== false && (!proveedor || !p.proveedor || p.proveedor === proveedor));
+
+  for (const f of filas) {
+    if (f.parte) continue;
+    const d = parseDescripcion(f.descripcion);
+    // 1) Misma descripción en otro renglón
+    const porDesc = f.descripcion && masComun(filas.filter((x) => x !== f && x.parte && x.descripcion === f.descripcion).map((x) => x.parte));
+    if (porDesc) { marcar(f, 'parte', porDesc, 'por la descripción'); continue; }
+    // 2) El catálogo: el único número de parte con ese espesor
+    if (d) {
+      const cand = partes.filter((p) => p.espesor_mm === d.espesor_mm && (!p.ancho_m || Math.abs(p.ancho_m - d.ancho_m) < 0.01));
+      if (cand.length === 1) { marcar(f, 'parte', cand[0].id, `por el espesor (${d.espesor_mm} mm)`); continue; }
+    }
+    // 3) Los demás rollos del mismo lote
+    const porLote = f.lote && masComun(filas.filter((x) => x !== f && x.parte && x.lote === f.lote).map((x) => x.parte));
+    if (porLote) marcar(f, 'parte', porLote, 'por el lote');
+  }
+
+  for (const f of filas) {
+    if (f.largo) continue;
+    const d = parseDescripcion(f.descripcion);
+    if (d && d.largo_m) { marcar(f, 'largo', d.largo_m, 'de la descripción'); continue; }
+    const porLote = masComun(filas.filter((x) => x !== f && x.largo && x.lote === f.lote && x.parte === f.parte).map((x) => x.largo));
+    if (porLote) { marcar(f, 'largo', porLote, 'por el lote'); continue; }
+    const p = Store.get('partes', f.parte);
+    if (p && p.largo_tipico_m) marcar(f, 'largo', p.largo_tipico_m, 'normal del número de parte');
+  }
 }
 
 function parsearEncabezado(t) {
@@ -170,6 +209,7 @@ function revisarFilas(filas) {
     else if (!Store.get('partes', f.parte)) av.push('No. de parte NUEVO: se agregará al catálogo');
     if (!f.lote) av.push('Falta lote');
     if (!f.largo) av.push('Faltan metros');
+    if (f.deducido && f.deducido.length) av.push('Deducido: ' + f.deducido.join(', ') + ' (revisa)');
     f.avisos = av;
     f.bloqueante = av.some((a) => /Falta No\. de rollo|Repetido|Ya existe/.test(a));
   }

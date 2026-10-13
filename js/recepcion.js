@@ -127,7 +127,9 @@ function vistaRecepcionNueva() {
       resumenFilas(b.filas, b.totales),
       h('p', { class: 'muted' }, 'Corrige cualquier dato mal leído tocando la celda. Los renglones en rojo no se guardarán.'),
       tablaRevisionFilas(b.filas, () => App.refrescar()),
-    ) : h('p', { class: 'muted' }, 'También puedes crear la recepción sin lista y escanear cada rollo con su código 2D (cuadrito).'),
+    ) : h('div', { class: 'card aviso' },
+      h('b', {}, '¿La foto de la hoja sale con errores?'),
+      h('p', {}, 'Crea la recepción solo con el encabezado y después tómale foto a la ETIQUETA de cada rollo: los códigos de barras traen todos los datos exactos. Al final compara contra el "Total general" de la hoja.')),
 
     h('div', { class: 'acciones' },
       h('button', {
@@ -177,9 +179,11 @@ function vistaRecepcion(id) {
     encabezadoRecepcion(rec),
 
     abierta ? h('div', { class: 'card scan-card' },
-      h('h2', {}, 'Escanear rollos'),
-      h('p', { class: 'muted' }, 'Escanea el NÚMERO DE ROLLO. Si quieres verificar la etiqueta, escanea después el LOTE o el código 2D (cuadrito) del mismo rollo.'),
-      campoEscaneo((txt) => { procesarEscaneoRecepcion(rec, txt); App.refrescar(); },
+      h('h2', {}, 'Recibir rollos'),
+      h('p', { class: 'muted' }, 'Lo más rápido: tómale foto a la ETIQUETA de cada rollo (que se vean todos los códigos de barras y el cuadrito). La app lee número de rollo, lote, número de parte y metros de una vez.'),
+      botonesFotoEtiqueta(rec),
+      h('p', { class: 'muted' }, 'O con lector / teclado: escanea el NÚMERO DE ROLLO y, si quieres verificar, después el LOTE o el código 2D del mismo rollo.'),
+      campoEscaneo((txt) => { escanearEnRecepcion(rec, txt); App.refrescar(); },
         { continuo: true, autofocus: !esTactil(), placeholder: 'Escanea el número de rollo…' }),
       ult ? h('div', { class: 'resultado-escaneo ' + ult.tipo }, ult.texto) : null,
       h('div', { class: 'progreso' },
@@ -188,6 +192,7 @@ function vistaRecepcion(id) {
     ) : null,
 
     tablaResumenLotes(rollos),
+    totalesPapel(rec, rollos),
 
     conAlerta.length ? h('div', { class: 'card borde-rojo' },
       h('h2', {}, `⚠️ Alertas (${conAlerta.length})`),
@@ -274,6 +279,33 @@ function tablaResumenLotes(rollos) {
       h('tfoot', {}, h('tr', {}, h('td', { colspan: 2 }, 'Total'), h('td', { class: 'num' }, tot.esp),
         h('td', { class: 'num' }, tot.rec), h('td', { class: 'num' }, fmtM(tot.recM)), h('td', {}, ''))),
     )),
+  );
+}
+
+// Comparar contra el "Total general" de la hoja de papel (rollos y metros)
+function totalesPapel(rec, rollos) {
+  const t = rec.totales_papel || {};
+  const recibidos = rollos.filter((r) => r.recibido);
+  const metros = recibidos.reduce((s, r) => s + (r.largo_m || 0), 0);
+  const guardar = (k, v) => {
+    rec.totales_papel = { ...(rec.totales_papel || {}), [k]: v === '' ? null : Number(v) };
+    Store.put('recepciones', rec);
+    App.refrescar();
+  };
+  const hay = t.rollos || t.metros;
+  const okR = t.rollos ? t.rollos === recibidos.length : null;
+  const okM = t.metros ? Math.abs(t.metros - metros) < 0.5 : null;
+  return h('div', { class: 'card' },
+    h('h2', {}, '🧾 Total general de la hoja'),
+    h('div', { class: 'form-grid' },
+      h('label', { class: 'campo' }, 'Rollos según la hoja', h('input', { type: 'number', value: t.rollos ?? '', onchange: (e) => guardar('rollos', e.target.value) })),
+      h('label', { class: 'campo' }, 'Metros según la hoja', h('input', { type: 'number', step: 'any', value: t.metros ?? '', onchange: (e) => guardar('metros', e.target.value) })),
+    ),
+    hay ? h('div', { class: 'calc ' + (okR !== false && okM !== false ? 'texto-verde' : 'texto-rojo') },
+      `Recibidos: ${recibidos.length} rollos · ${fmtNum(metros)} m. `,
+      okR === false ? `Diferencia: ${recibidos.length - t.rollos > 0 ? '+' : ''}${recibidos.length - t.rollos} rollos. ` : '',
+      okM === false ? `Diferencia: ${fmtNum(metros - t.metros)} m.` : '',
+      okR !== false && okM !== false ? '✅ Cuadra con la hoja' : '') : h('p', { class: 'muted' }, 'Escribe los totales del renglón "Total general" para comparar.'),
   );
 }
 
