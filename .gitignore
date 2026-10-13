@@ -1,0 +1,5 @@
+# Archivos locales que no se suben
+.claude/
+*.log
+Thumbs.db
+desktop.ini
