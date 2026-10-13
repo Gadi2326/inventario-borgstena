@@ -142,7 +142,8 @@ function calculos(ins) {
   const esp = d.espesores.map(Number).filter((x) => x > 0);
   const espProm = esp.length ? esp.reduce((a, b) => a + b, 0) / esp.length : null;
   const tol = parte.tolerancia_mm || 0.5;
-  const espFuera = esp.filter((x) => Math.abs(x - parte.espesor_mm) > tol + 1e-9);
+  // Si el número de parte aún no tiene espesor capturado, no se valida automático
+  const espFuera = parte.espesor_mm ? esp.filter((x) => Math.abs(x - parte.espesor_mm) > tol + 1e-9) : [];
   const ancho = Number(d.ancho_m) || parte.ancho_m;
   const largoPesado = Number(d.largo_pesado_m) || (muestra[0] && muestra[0].largo_m);
   const densidad = Number(d.peso_real_kg) > 0 && espProm && largoPesado
@@ -173,7 +174,7 @@ function vistaInspeccion(id) {
   const resInp = (arr, i) => h('input', { type: 'text', value: arr[i].res, disabled: bloqueada, oninput: (e) => { arr[i].res = e.target.value; guardar(); } });
 
   // Validación automática del espesor
-  if (c.esp.length) {
+  if (c.esp.length && c.parte.espesor_mm) {
     const auto = c.espFuera.length ? 'NOK' : 'OK';
     d.sec3[2].res = `${c.esp.map((x) => fmtNum(x, 2)).join(' / ')} mm (prom. ${fmtNum(c.espProm, 2)})`;
     if (!bloqueada && d.sec3[2].eval !== auto) { d.sec3[2].eval = auto; guardar(); }

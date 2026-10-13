@@ -36,6 +36,13 @@ const RUTAS = [
   [/^\/config$/, () => vistaConfig()],
 ];
 
+// Vuelve a descargar todos los archivos de la app ignorando las copias guardadas
+async function recargarSinCache() {
+  const archivos = [location.pathname, ...[...document.querySelectorAll('script[src], link[rel=stylesheet]')].map((el) => el.src || el.href)];
+  await Promise.all(archivos.map((u) => fetch(u, { cache: 'reload' }).catch(() => {})));
+  location.reload();
+}
+
 function renderRuta() {
   if (!Sesion.usuario()) return vistaLogin();
   const ruta = (location.hash || '#/').slice(1).split('?')[0] || '/';
@@ -44,6 +51,13 @@ function renderRuta() {
     if (m) {
       try { return fn(m); } catch (e) {
         console.error(e);
+        // "X is not defined" casi siempre es una versión vieja de la página guardada en el navegador
+        if (e instanceof ReferenceError) {
+          return h('div', { class: 'card aviso' },
+            h('b', {}, 'Hay una versión nueva de la app.'),
+            h('p', {}, 'Tu navegador guardó una copia vieja. Toca el botón para cargar la nueva (en PC también sirve Ctrl + F5).'),
+            h('button', { class: 'btn btn-primario', onclick: () => recargarSinCache() }, '🔄 Actualizar la app'));
+        }
         return h('div', { class: 'card error' }, 'Ocurrió un error en esta pantalla: ' + e.message);
       }
     }

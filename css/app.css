@@ -71,6 +71,9 @@ details.card > summary { cursor: pointer; padding: 4px 0; list-style-position: o
 input, select, textarea {
   font: inherit; padding: 10px 12px; border: 1.5px solid var(--borde); border-radius: 8px; background: #fff; width: 100%; min-height: 46px;
 }
+input[type=checkbox] { width: 24px; min-height: 24px; height: 24px; }
+.tabla select { min-width: 170px; }
+.fila select { flex: 1; min-width: 0; }
 input:disabled, select:disabled { background: var(--gris-bg); color: var(--texto); }
 input.fuera { border-color: var(--rojo); background: var(--rojo-bg); }
 .campo { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: var(--muted); font-weight: 600; margin: 4px 0; }
@@ -84,6 +87,21 @@ input.fuera { border-color: var(--rojo); background: var(--rojo-bg); }
 .inp-chico { min-width: 80px; }
 .sel-grande { min-height: 56px; font-size: 1.05rem; }
 .cod { min-width: 90px; font-family: ui-monospace, monospace; }
+
+/* ---------- Cargar lista desde foto/texto ---------- */
+h3 { font-size: 1rem; margin: 18px 0 8px; }
+.card-rapido { border: 2px solid var(--verde); }
+.pasos { margin: 8px 0; padding-left: 22px; color: var(--muted); font-size: .95rem; }
+.pasos li { margin: 3px 0; }
+.texto-lista { font: .85rem ui-monospace, Consolas, monospace; min-height: 120px; resize: vertical; }
+.campo.leido input, .campo.leido select { border-color: var(--verde); background: var(--verde-bg); }
+.tabla-edit td { padding: 4px; }
+.inp-tabla { min-height: 38px; padding: 6px 8px; font-size: .9rem; min-width: 130px; }
+.inp-tabla.mono { font-family: ui-monospace, monospace; min-width: 150px; }
+.inp-tabla.inp-num { min-width: 70px; width: 80px; }
+.tabla .avisos { white-space: normal; min-width: 180px; font-size: .82rem; color: var(--amarillo); }
+.fila-alerta .avisos { color: var(--rojo); }
+.fila-aviso td { background: var(--amarillo-bg); }
 
 /* ---------- Escaneo ---------- */
 .scan-box { display: flex; gap: 8px; }

@@ -47,34 +47,112 @@ const CAMPOS_ENCABEZADO = [
   ['chofer', 'Línea transportista / chofer'], ['entrega', 'Entrega'],
 ];
 
+// Lo que se va capturando en "Nueva recepción" (se conserva al cambiar de pantalla)
+let borradorRec = null;
+
+function proveedoresActivos(alm) {
+  return Store.where('proveedores', (p) => p.almacen === alm && p.activo !== false).sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+// Agrega un proveedor nuevo preguntando su nombre; regresa su id
+function agregarProveedor(alm) {
+  const nombre = (window.prompt('Nombre del proveedor nuevo (ej. "ESPUMAS DEL NORTE S.A. DE C.V.")') || '').trim();
+  if (!nombre) return null;
+  const id = nombre.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/\s+/)[0].replace(/[^A-Z0-9]/g, '') || uid();
+  const final = Store.get('proveedores', id) ? id + '-' + uid().slice(-4).toUpperCase() : id;
+  Store.put('proveedores', { id: final, nombre, almacen: alm, activo: true });
+  toast(`Proveedor "${nombre}" agregado.`);
+  return final;
+}
+
 function vistaRecepcionNueva() {
   const alm = App.almacen();
-  const provs = Store.where('proveedores', (p) => p.almacen === alm);
-  const f = { fecha: isoAFechaInput(new Date().toISOString()), entrega: 'DUAL BORGSTENA TRIM MEXICO', proveedor: provs[0] && provs[0].id };
-  const campo = (k, label, tipo = 'text') => h('label', { class: 'campo' }, label,
+  const provs = proveedoresActivos(alm);
+  if (!borradorRec || borradorRec.almacen !== alm) {
+    borradorRec = {
+      almacen: alm, texto: '', filas: null, totales: null,
+      f: { fecha: isoAFechaInput(new Date().toISOString()), entrega: 'DUAL BORGSTENA TRIM MEXICO', proveedor: provs[0] && provs[0].id },
+    };
+  }
+  const b = borradorRec, f = b.f;
+  const campo = (k, label, tipo = 'text') => h('label', { class: 'campo' + (b.leidos && b.leidos.includes(k) ? ' leido' : '') }, label,
     h('input', { type: tipo, value: f[k] || '', oninput: (e) => { f[k] = e.target.value; } }));
 
   return h('div', {},
     h('h1', {}, 'Nueva recepción'),
-    h('p', { class: 'muted' }, 'Copia el encabezado de la lista de embarque del proveedor. Después escaneas cada rollo.'),
-    h('div', { class: 'card form-grid' },
-      h('label', { class: 'campo' }, 'Proveedor',
-        h('select', { onchange: (e) => { f.proveedor = e.target.value; } },
-          provs.map((p) => h('option', { value: p.id }, p.nombre)))),
-      campo('fecha', 'Fecha', 'date'),
-      CAMPOS_ENCABEZADO.map(([k, l]) => campo(k, l)),
+
+    h('details', { class: 'card card-rapido', open: !b.filas },
+      h('summary', {}, h('b', {}, '⚡ Llenar rápido con una foto de la lista')),
+      bloquePegarLista(b, {
+        alLeer: (r) => {
+          b.leidos = Object.keys(r.encabezado);
+          Object.assign(f, r.encabezado);
+          b.filas = r.filas;
+          b.totales = r.totales;
+          toast(`Leí ${r.filas.length} rollos${b.leidos.length ? ' y datos del encabezado' : ''}. Revísalos abajo.`);
+          App.refrescar();
+        },
+      }),
+      h('div', { class: 'acciones' },
+        h('label', { class: 'btn' }, '📥 O importar un Excel', h('input', {
+          type: 'file', accept: '.xlsx,.xls,.csv', class: 'oculto',
+          onchange: async (e) => {
+            const filas = e.target.files[0] && await leerExcelFilas(e.target.files[0]);
+            if (filas && filas.length) { b.filas = filas; b.totales = null; App.refrescar(); }
+          },
+        })),
+      ),
     ),
-    h('button', {
-      class: 'btn btn-grande btn-primario',
-      onclick: () => {
-        if (!f.factura && !f.po) return toast('Escribe al menos la factura o el PO.', 'error');
-        const rec = Store.put('recepciones', {
-          ...f, fecha: fechaInputAIso(f.fecha), almacen: alm, estado: 'abierta',
-          creado_por: Sesion.usuario().nombre, creado_en: new Date().toISOString(),
-        });
-        App.ir('/recepcion/' + rec.id);
-      },
-    }, 'Crear y empezar a escanear'),
+
+    h('div', { class: 'card' },
+      h('h2', {}, 'Encabezado de la lista de embarque'),
+      b.leidos && b.leidos.length ? h('p', { class: 'muted' }, 'Los campos en verde se llenaron solos: revísalos.') : null,
+      h('div', { class: 'form-grid' },
+        h('label', { class: 'campo' + (b.leidos && b.leidos.includes('proveedor') ? ' leido' : '') }, 'Proveedor',
+          h('div', { class: 'fila' },
+            h('select', { onchange: (e) => { f.proveedor = e.target.value; } },
+              provs.map((p) => h('option', { value: p.id, selected: p.id === f.proveedor }, p.nombre))),
+            h('button', {
+              type: 'button', class: 'btn btn-chico', title: 'Agregar otro proveedor',
+              onclick: () => { const id = agregarProveedor(alm); if (id) { f.proveedor = id; App.refrescar(); } },
+            }, '➕ Otro'),
+          )),
+        campo('fecha', 'Fecha', 'date'),
+        CAMPOS_ENCABEZADO.map(([k, l]) => campo(k, l)),
+      ),
+    ),
+
+    b.filas ? h('div', { class: 'card' },
+      h('h2', {}, `Rollos de la lista (${b.filas.length})`),
+      resumenFilas(b.filas, b.totales),
+      h('p', { class: 'muted' }, 'Corrige cualquier dato mal leído tocando la celda. Los renglones en rojo no se guardarán.'),
+      tablaRevisionFilas(b.filas, () => App.refrescar()),
+    ) : h('p', { class: 'muted' }, 'También puedes crear la recepción sin lista y escanear cada rollo con su código 2D (cuadrito).'),
+
+    h('div', { class: 'acciones' },
+      h('button', {
+        class: 'btn btn-grande btn-primario',
+        onclick: () => {
+          if (!f.factura && !f.po) return toast('Escribe al menos la factura o el PO.', 'error');
+          if (!f.proveedor) return toast('Elige o agrega el proveedor.', 'error');
+          const filas = b.filas ? revisarFilas(b.filas) : [];
+          const malas = filas.filter((x) => x.bloqueante).length;
+          if (malas && !confirmar(`${malas} renglón(es) en rojo no se guardarán. ¿Continuar?`)) return;
+          const rec = Store.put('recepciones', {
+            ...f, fecha: fechaInputAIso(f.fecha), almacen: alm, estado: 'abierta',
+            creado_por: Sesion.usuario().nombre, creado_en: new Date().toISOString(),
+            totales_papel: b.totales || null,
+          });
+          if (filas.length) {
+            const r = guardarFilasEnRecepcion(rec, filas);
+            toast(`Recepción creada con ${r.n} rollos en la lista.${r.nuevas ? ` Se agregaron ${r.nuevas} números de parte nuevos (revísalos en Ajustes).` : ''}`);
+          }
+          borradorRec = null;
+          App.ir('/recepcion/' + rec.id);
+        },
+      }, b.filas ? `✅ Crear recepción con ${b.filas.filter((x) => !x.bloqueante).length} rollos` : 'Crear y empezar a escanear'),
+      h('button', { class: 'btn', onclick: () => { if (confirmar('¿Borrar lo capturado?')) { borradorRec = null; App.refrescar(); } } }, 'Limpiar'),
+    ),
   );
 }
 
@@ -239,7 +317,7 @@ function procesarEscaneoRecepcion(rec, txt) {
     if (r) {
       Object.assign(r, { recibido: true, recibido_en: new Date().toISOString(), recibido_por: user, estado: 'inspeccion_pendiente', ubicacion_id: ubicacionPorDefecto(rec.almacen) });
       let aviso = '';
-      if (r.lote_proveedor && c.lote !== r.lote_proveedor) {
+      if (r.lote_proveedor && c.lote && c.lote !== r.lote_proveedor) {
         aviso = ` El número de rollo sugiere lote ${c.lote} y la lista dice ${r.lote_proveedor}.`;
         agregarAlerta(r, `El número de rollo sugiere lote ${c.lote} pero la lista dice ${r.lote_proveedor}`);
       }
@@ -333,15 +411,51 @@ function cerrarRecepcion(rec) {
   App.refrescar();
 }
 
-// ---------- Capturar la lista de embarque (a mano o desde Excel) ----------
+// ---------- Capturar la lista de embarque (foto/texto, Excel o a mano) ----------
+const borradorLista = {}; // recepcion_id -> { texto, filas, totales }
+
 function capturaLista(rec) {
   const partes = Store.where('partes', (p) => p.almacen === rec.almacen && p.activa);
+  const b = borradorLista[rec.id] = borradorLista[rec.id] || { texto: '', filas: null, totales: null };
   const f = { parte: partes[0] && partes[0].id, lote: '', no_rollo: '', largo: '' };
-  const largoDefecto = { 'SPONGE-A527GN': 240, 'SPONGE-A727GN': 120 };
   const inp = (k, ph, tipo = 'text') => h('input', { type: tipo, placeholder: ph, value: f[k], oninput: (e) => { f[k] = e.target.value; } });
-  return h('details', { class: 'card' },
-    h('summary', {}, h('b', {}, 'Agregar renglones a la lista de embarque')),
-    h('p', { class: 'muted' }, 'Úsalo si la lista no está cargada. Puedes agregar renglón por renglón o importar un Excel con columnas NO. PARTE, DESCRIPCIÓN, LOTE, NO. ROLLO y LARGO.'),
+  const sinLista = !rollosDeRecepcion(rec.id).some((r) => r.en_lista);
+  return h('details', { class: 'card', open: sinLista || !!b.filas },
+    h('summary', {}, h('b', {}, sinLista ? '⚡ Cargar la lista de embarque' : 'Agregar más renglones a la lista')),
+
+    h('h3', {}, '📷 Desde una foto o texto'),
+    bloquePegarLista(b, {
+      alLeer: (r) => { b.filas = r.filas; b.totales = r.totales; App.refrescar(); },
+    }),
+    b.filas ? h('div', {},
+      resumenFilas(b.filas, b.totales),
+      tablaRevisionFilas(b.filas, () => App.refrescar()),
+      h('div', { class: 'acciones' },
+        h('button', {
+          class: 'btn btn-primario',
+          onclick: () => {
+            const r = guardarFilasEnRecepcion(rec, b.filas);
+            if (b.totales && !rec.totales_papel) { rec.totales_papel = b.totales; Store.put('recepciones', rec); }
+            delete borradorLista[rec.id];
+            toast(`Se agregaron ${r.n} rollos a la lista.${r.omitidas ? ` ${r.omitidas} en rojo se omitieron.` : ''}${r.nuevas ? ` ${r.nuevas} números de parte nuevos.` : ''}`);
+            App.refrescar();
+          },
+        }, `✅ Agregar ${b.filas.filter((x) => !x.bloqueante).length} rollos a la lista`),
+        h('button', { class: 'btn', onclick: () => { delete borradorLista[rec.id]; App.refrescar(); } }, 'Descartar'),
+      ),
+    ) : null,
+
+    h('h3', {}, '📥 Desde Excel'),
+    h('p', { class: 'muted' }, 'Columnas: NO. PARTE, DESCRIPCIÓN, LOTE, NO. ROLLO y LARGO.'),
+    h('label', { class: 'btn' }, '📥 Importar Excel', h('input', {
+      type: 'file', accept: '.xlsx,.xls,.csv', class: 'oculto',
+      onchange: async (e) => {
+        const filas = e.target.files[0] && await leerExcelFilas(e.target.files[0]);
+        if (filas && filas.length) { b.filas = filas; b.totales = null; App.refrescar(); }
+      },
+    })),
+
+    h('h3', {}, '✍️ Renglón por renglón'),
     h('div', { class: 'form-grid' },
       h('label', { class: 'campo' }, 'No. parte', h('select', { onchange: (e) => { f.parte = e.target.value; } }, partes.map((p) => h('option', { value: p.id }, p.id)))),
       h('label', { class: 'campo' }, 'Lote', inp('lote', 'Z-901-01-01')),
@@ -354,54 +468,51 @@ function capturaLista(rec) {
         const no = f.no_rollo.trim().toUpperCase();
         if (!no) return toast('Escribe el número de rollo.', 'error');
         if (Store.get('rollos', no)) return toast('Ese rollo ya existe.', 'error');
-        const largo = Number(f.largo) || largoDefecto[f.parte] || null;
+        const p = Store.get('partes', f.parte);
+        const largo = Number(f.largo) || (p && p.largo_tipico_m) || null;
         const lote = f.lote.trim().toUpperCase() || (parseNoRollo(no) || {}).lote || '';
         agregarRenglonLista(rec, { parte: f.parte, lote, no_rollo: no, largo });
         App.refrescar();
       },
     }, '➕ Agregar renglón'),
-    h('label', { class: 'btn' }, '📥 Importar Excel', h('input', {
-      type: 'file', accept: '.xlsx,.xls,.csv', class: 'oculto',
-      onchange: (e) => e.target.files[0] && importarListaExcel(rec, e.target.files[0]),
-    })),
   );
 }
 
 function agregarRenglonLista(rec, { parte, desc, lote, no_rollo, largo }) {
   const p = Store.get('partes', parte);
   const n = rollosDeRecepcion(rec.id).length;
-  const d = desc || (p ? `${p.ancho_m.toFixed(3)}X${largo}X${(p.espesor_mm / 1000).toFixed(4)}-${p.densidad}` : '');
+  const medidas = p && p.ancho_m && p.espesor_mm && p.densidad;
+  const d = desc || (medidas ? `${p.ancho_m.toFixed(3)}X${largo}X${(p.espesor_mm / 1000).toFixed(4)}-${p.densidad}` : '');
   Store.put('rollos', {
     id: no_rollo, no_rollo, almacen: rec.almacen, recepcion_id: rec.id, renglon: n + 1,
     parte, descripcion: d, lote_proveedor: lote, largo_m: largo, largo_actual_m: largo,
-    peso_teorico_kg: p && largo ? Math.round(p.ancho_m * largo * (p.espesor_mm / 1000) * p.densidad * 10000) / 10000 : null,
+    peso_teorico_kg: medidas && largo ? Math.round(p.ancho_m * largo * (p.espesor_mm / 1000) * p.densidad * 10000) / 10000 : null,
     en_lista: true, recibido: false, estado: 'en_transito', ubicacion_id: null, alertas: [],
   });
 }
 
-async function importarListaExcel(rec, file) {
+// Lee un Excel/CSV con la lista y regresa los renglones para revisarlos antes de guardar
+async function leerExcelFilas(file) {
   try {
     const wb = XLSX.read(await file.arrayBuffer());
     const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false });
     const norm = (s) => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    const iHead = filas.findIndex((f) => f.some((c) => norm(c) === 'NO. ROLLO' || norm(c) === 'NO ROLLO'));
-    if (iHead < 0) return toast('No encontré la columna "NO. ROLLO" en el Excel.', 'error');
+    const iHead = filas.findIndex((f) => f.some((c) => /^NO.? ?ROLLO/.test(norm(c))));
+    if (iHead < 0) { toast('No encontré la columna "NO. ROLLO" en el Excel.', 'error'); return null; }
     const head = filas[iHead].map(norm);
-    const col = (...nombres) => head.findIndex((c) => nombres.some((n) => c.startsWith(n)));
-    const cParte = col('NO. PARTE', 'NO PARTE'), cDesc = col('DESCRIPCION'), cLote = col('LOTE'),
-      cRollo = col('NO. ROLLO', 'NO ROLLO'), cLargo = col('LARGO');
-    let n = 0, rep = 0;
+    const col = (re) => head.findIndex((c) => re.test(c));
+    const cParte = col(/^NO.? ?PARTE/), cDesc = col(/^DESCRIPCION/), cLote = col(/^LOTE/), cRollo = col(/^NO.? ?ROLLO/), cLargo = col(/^LARGO/);
+    const out = [];
     for (const f of filas.slice(iHead + 1)) {
-      const no = norm(f[cRollo]).replace(/\s/g, '');
-      if (!parseNoRollo(no)) continue;
-      if (Store.get('rollos', no)) { rep++; continue; }
-      agregarRenglonLista(rec, { parte: norm(f[cParte]), desc: f[cDesc], lote: norm(f[cLote]), no_rollo: no, largo: Number(f[cLargo]) || null });
-      n++;
+      const no = norm(f[cRollo]).replace(/s/g, '');
+      if (no.length < 4 || /TOTAL/.test(norm(f[cParte]))) continue;
+      out.push({ parte: norm(f[cParte]), descripcion: f[cDesc] || '', lote: norm(f[cLote]), no_rollo: no, largo: Number(String(f[cLargo]).replace(',', '.')) || null });
     }
-    toast(`Se agregaron ${n} rollos.${rep ? ` ${rep} ya existían y se omitieron.` : ''}`, n ? 'ok' : 'error');
-    App.refrescar();
+    if (!out.length) toast('El Excel no trae renglones con número de rollo.', 'error');
+    return out;
   } catch (e) {
     toast('No se pudo leer el archivo: ' + e.message, 'error');
+    return null;
   }
 }
 

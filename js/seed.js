@@ -47,13 +47,13 @@ function cargarCatalogos() {
     { id: 'TELA-MUESTRAS', almacen: 'TELA', nombre: 'Muestras (área provisional)', activa: true, orden: 4 },
   ]);
   Store.putMany('proveedores', [
-    { id: 'UREBLOCK', nombre: 'UREBLOCK S.A. de C.V.', almacen: 'FOAM' },
+    { id: 'UREBLOCK', nombre: 'UREBLOCK S.A. de C.V.', almacen: 'FOAM', activo: true },
   ]);
-  const parte = (id, esp) => ({
+  const parte = (id, esp, largo) => ({
     id, almacen: 'FOAM', material: 'Esponja', proveedor: 'UREBLOCK',
-    espesor_mm: esp, tolerancia_mm: 0.5, ancho_m: 1.45, densidad: 27, activa: true,
+    espesor_mm: esp, tolerancia_mm: 0.5, ancho_m: 1.45, densidad: 27, largo_tipico_m: largo, activa: true,
   });
-  Store.putMany('partes', [parte('SPONGE-A327GN', 4), parte('SPONGE-A527GN', 6), parte('SPONGE-A727GN', 8)]);
+  Store.putMany('partes', [parte('SPONGE-A327GN', 4, null), parte('SPONGE-A527GN', 6, 240), parte('SPONGE-A727GN', 8, 120)]);
   // Códigos de la descripción cuyo significado aún no sabemos
   Store.putMany('codigos', ['035L', 'ST', 'GRS', 'RB', 'LOOPER 2'].map((c) => ({ id: c, significado: '' })));
   // En la nube los usuarios se crean solos al entrar con su correo

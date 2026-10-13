@@ -184,6 +184,80 @@ function vistaRollo(id) {
 }
 
 // ---------- Ajustes ----------
+function seccionProveedores(alm) {
+  const provs = Store.where('proveedores', (p) => p.almacen === alm).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return h('div', { class: 'card' },
+    h('h2', {}, 'Proveedores'),
+    h('p', { class: 'muted' }, 'Cambia el nombre o agrega proveedores nuevos. Los que desactives ya no salen al crear una recepción, pero su historial se conserva.'),
+    provs.map((p) => h('div', { class: 'fila' },
+      h('span', { class: 'cod', title: 'Clave interna' }, p.id),
+      h('input', { value: p.nombre, onchange: (e) => { p.nombre = e.target.value.trim() || p.nombre; Store.put('proveedores', p); toast('Guardado.'); } }),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: p.activo !== false, onchange: (e) => { p.activo = e.target.checked; Store.put('proveedores', p); } }), 'Activo'),
+    )),
+    h('button', { class: 'btn', onclick: () => { if (agregarProveedor(alm)) App.refrescar(); } }, '➕ Agregar proveedor'),
+  );
+}
+
+const nuevaParte = { id: '', material: '', proveedor: '', espesor_mm: '', tolerancia_mm: '0.5', ancho_m: '', densidad: '', largo_tipico_m: '' };
+const CAMPOS_PARTE = [
+  ['espesor_mm', 'Espesor (mm)'], ['tolerancia_mm', 'Tolerancia ± (mm)'], ['ancho_m', 'Ancho (m)'],
+  ['densidad', 'Densidad (kg/m³)'], ['largo_tipico_m', 'Largo normal del rollo (m)'],
+];
+
+function seccionPartes(alm) {
+  const partes = Store.where('partes', (p) => p.almacen === alm).sort((a, b) => a.id.localeCompare(b.id));
+  const provs = Store.where('proveedores', (p) => p.almacen === alm);
+  const material = alm === 'FOAM' ? ['Esponja'] : ['Tela', 'Vinil', 'Backing'];
+  const np = nuevaParte;
+  if (!np.material) np.material = material[0];
+  if (!np.proveedor && provs[0]) np.proveedor = provs[0].id;
+  const guardar = (p, k, v) => { p[k] = v; delete p.revisar; Store.put('partes', p); toast('Guardado.'); };
+
+  return h('div', { class: 'card' },
+    h('h2', {}, 'Números de parte'),
+    h('p', { class: 'muted' }, 'Las medidas se usan para validar la inspección (espesor ± tolerancia, densidad). Los que aparecen con ⚠️ se crearon solos desde una lista: revisa sus medidas.'),
+    h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
+      h('thead', {}, h('tr', {}, ['No. parte', 'Proveedor', ...CAMPOS_PARTE.map(([, l]) => l), 'Activo'].map((t) => h('th', {}, t)))),
+      h('tbody', {}, partes.map((p) => h('tr', { class: p.revisar ? 'fila-aviso' : '' },
+        h('td', {}, p.revisar ? '⚠️ ' : '', h('b', {}, p.id), h('div', { class: 'muted' }, p.material)),
+        h('td', {}, h('select', { onchange: (e) => guardar(p, 'proveedor', e.target.value) },
+          h('option', { value: '' }, '—'), provs.map((v) => h('option', { value: v.id, selected: v.id === p.proveedor }, v.nombre)))),
+        CAMPOS_PARTE.map(([k]) => h('td', {}, h('input', {
+          type: 'number', step: 'any', class: 'inp-chico', value: p[k] ?? '',
+          onchange: (e) => guardar(p, k, e.target.value === '' ? null : Number(e.target.value)),
+        }))),
+        h('td', {}, h('input', { type: 'checkbox', checked: p.activa !== false, onchange: (e) => guardar(p, 'activa', e.target.checked) })),
+      ))),
+    )),
+    h('h3', {}, '➕ Agregar número de parte'),
+    h('div', { class: 'form-grid' },
+      h('label', { class: 'campo' }, 'No. parte', h('input', { value: np.id, placeholder: 'ej. SPONGE-A927GN', oninput: (e) => { np.id = e.target.value; } })),
+      h('label', { class: 'campo' }, 'Material', h('select', { onchange: (e) => { np.material = e.target.value; } },
+        material.map((m) => h('option', { selected: m === np.material }, m)))),
+      h('label', { class: 'campo' }, 'Proveedor', h('select', { onchange: (e) => { np.proveedor = e.target.value; } },
+        provs.map((v) => h('option', { value: v.id, selected: v.id === np.proveedor }, v.nombre)))),
+      CAMPOS_PARTE.map(([k, l]) => h('label', { class: 'campo' }, l,
+        h('input', { type: 'number', step: 'any', value: np[k], oninput: (e) => { np[k] = e.target.value; } }))),
+    ),
+    h('button', {
+      class: 'btn btn-primario',
+      onclick: () => {
+        const id = np.id.trim().toUpperCase().replace(/\s+/g, '');
+        if (!id) return toast('Escribe el número de parte.', 'error');
+        if (Store.get('partes', id)) return toast('Ese número de parte ya existe.', 'error');
+        const num = (v) => (v === '' || v === null ? null : Number(v));
+        Store.put('partes', {
+          id, almacen: alm, material: np.material, proveedor: np.proveedor, activa: true,
+          ...Object.fromEntries(CAMPOS_PARTE.map(([k]) => [k, num(np[k])])),
+        });
+        Object.assign(nuevaParte, { id: '', espesor_mm: '', ancho_m: '', densidad: '', largo_tipico_m: '', tolerancia_mm: '0.5' });
+        toast(`Número de parte ${id} agregado.`);
+        App.refrescar();
+      },
+    }, 'Agregar'),
+  );
+}
+
 function vistaConfig() {
   if (!Sesion.puede('configurar')) return h('div', { class: 'card' }, 'Solo un supervisor puede cambiar los ajustes.');
   const alm = App.almacen();
@@ -217,19 +291,8 @@ function vistaConfig() {
         h('input', { value: c.significado, placeholder: '¿Qué significa?', onchange: (e) => { c.significado = e.target.value; Store.put('codigos', c); toast('Guardado.'); } }),
       )),
     ),
-    h('div', { class: 'card' },
-      h('h2', {}, 'Números de parte'),
-      h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
-        h('thead', {}, h('tr', {}, ['No. parte', 'Material', 'Espesor (mm)', 'Tolerancia ± (mm)', 'Ancho (m)', 'Densidad (kg/m³)'].map((t) => h('th', {}, t)))),
-        h('tbody', {}, Store.where('partes', (p) => p.almacen === alm).map((p) => h('tr', {},
-          h('td', {}, p.id), h('td', {}, p.material),
-          ['espesor_mm', 'tolerancia_mm', 'ancho_m', 'densidad'].map((k) => h('td', {}, h('input', {
-            type: 'number', step: 'any', class: 'inp-chico', value: p[k],
-            onchange: (e) => { p[k] = Number(e.target.value); Store.put('partes', p); toast('Guardado.'); },
-          }))),
-        ))),
-      )),
-    ),
+    seccionProveedores(alm),
+    seccionPartes(alm),
     h('div', { class: 'card' },
       h('h2', {}, 'Usuarios'),
       NUBE ? h('p', { class: 'muted' }, 'Para dar acceso a alguien: en Supabase → Authentication → Users → Add user (correo y contraseña). Cuando entre por primera vez aparece aquí como almacenista y tú le cambias el nombre y el rol.') : null,

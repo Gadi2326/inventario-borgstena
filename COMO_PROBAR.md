@@ -30,6 +30,23 @@ Son **inventados** (lotes `Z-9xx`, facturas `DEMO-…`), no son de la planta.
 3. Revisa la tabla **Rollos por número de parte y lote**: cuenta sola lo que antes contabas a pluma.
 4. Toca **✅ Terminar recepción**. Los que no escaneaste quedan como **Faltantes**.
 
+### 1b. Cargar una lista nueva rápido (foto → texto)
+1. **🚚 Recepción → Nueva recepción** → abre **⚡ Llenar rápido con una foto de la lista**.
+2. En el celular, toma foto a la lista con **Google Lens** (Android) o la **cámara del iPhone** y toca **Copiar texto**.
+3. Pégalo en el cuadro y toca **🔎 Leer lista**:
+   - El encabezado (PO, factura, sello, placas, fecha…) se llena solo y queda en **verde**.
+   - Aparece la tabla de rollos: revisa y corrige cualquier celda mal leída.
+   - Arriba compara contra el **Total general** de la hoja: ✅ cuadra o ❌ no cuadra.
+   - **Amarillo** = número de parte nuevo (se agrega solo al catálogo). **Rojo** = repetido o ya existe (no se guarda).
+4. Toca **✅ Crear recepción con N rollos** y empieza a escanear.
+
+También acepta texto copiado de un PDF o correo, o un **Excel**.
+
+### Proveedores y números de parte nuevos
+- En **Nueva recepción**, junto a Proveedor, toca **➕ Otro** para agregar un proveedor.
+- En **⚙️ Ajustes → Proveedores** cambias nombres o desactivas proveedores.
+- En **⚙️ Ajustes → Números de parte** agregas números de parte nuevos con su espesor, tolerancia, ancho, densidad y largo normal del rollo. Los que se crearon solos desde una lista salen con ⚠️ para que revises sus medidas.
+
 ### 2. Inspección
 1. Abajo, en **📋 Inspección por lote**, toca **Inspeccionar** en `SPONGE-A527GN · lote Z-901-01-01`.
 2. El código (`AAAAMMDD`, o `-2`, `-3` si hay otra el mismo día), las fechas, el PO, la cantidad y el rollo muestreado se llenan solos.

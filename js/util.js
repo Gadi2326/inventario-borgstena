@@ -110,6 +110,8 @@ function clasificarCodigo(raw) {
   const dm = /^([A-Z0-9-]+)[\t ]+([\d.]+)[\t ]+(\d{12})$/i.exec(txt);
   if (dm) return { tipo: 'datamatrix', parte: dm[1].toUpperCase(), largo_m: Number(dm[2]), lote_produccion: dm[3], texto: txt };
   const up = txt.toUpperCase().replace(/\s+/g, '');
+  // Rollos de otros proveedores (con otro formato) que ya están en una lista
+  if (!parseNoRollo(up) && Store.get('rollos', up)) return { tipo: 'rollo', no_rollo: up, lote: null, texto: up };
   if (parseNoRollo(up)) return { tipo: 'rollo', no_rollo: up, ...parseNoRollo(up), texto: up };
   if (/^[A-Z]-\d{3}-\d{2}-\d{2}$/.test(up)) return { tipo: 'lote', lote: up, texto: up };
   if (Store.get('partes', up) || /^SPONGE-/.test(up)) return { tipo: 'parte', parte: up, texto: up };
