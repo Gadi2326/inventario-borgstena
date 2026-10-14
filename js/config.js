@@ -7,6 +7,6 @@
 // ⚠️ NUNCA pongas aquí la llave "service_role" ni la "secret".
 
 const CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_KEY: '',
+  SUPABASE_URL: 'https://jzjfndlpihbdlbfualox.supabase.co',
+  SUPABASE_KEY: 'sb_publishable_yX4-ZT2bwJG-dtp-_f0gnA_wkapVzTh',
 };
