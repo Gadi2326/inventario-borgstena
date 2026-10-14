@@ -55,13 +55,19 @@ También acepta texto copiado de un PDF o correo, o un **Excel**.
 - En **⚙️ Ajustes → Proveedores** cambias nombres o desactivas proveedores.
 - En **⚙️ Ajustes → Números de parte** agregas números de parte nuevos con su espesor, tolerancia, ancho, densidad y largo normal del rollo. Los que se crearon solos desde una lista salen con ⚠️ para que revises sus medidas.
 
+### Eliminar rollos o lotes capturados por error (solo supervisor)
+- En la recepción, cada rollo de las tablas tiene un botón **🗑️**, y en **Rollos por número de parte y lote** está **🗑️ Eliminar lote**.
+- En la ficha de un rollo, hasta abajo: **🗑️ Eliminar este rollo**.
+- Siempre pregunta **"¿Estás seguro?"** con la lista de rollos y metros. Se borran para todos con su historial y no se puede deshacer.
+
 ### 2. Inspección
 1. Abajo, en **📋 Inspección por lote**, toca **Inspeccionar** en `SPONGE-A527GN · lote Z-901-01-01`.
 2. El código (`AAAAMMDD`, o `-2`, `-3` si hay otra el mismo día), las fechas, el PO, la cantidad y el rollo muestreado se llenan solos.
 3. En **Espesor** escribe medidas (ej. 6.1, 5.9, 7.0): si alguna sale de 6 ± 0.5 mm se marca **NOK solo**.
 4. En **Densidad** escribe el **peso real de báscula**: la app calcula kg/m³.
-5. Marca OK / NOK / N/A, elige el resultado y toca **✅ Terminar inspección**. Todos los rollos del lote cambian de estado.
-6. Toca **🖨️ Imprimir / PDF**: sale con el formato FR-AL-016-01.
+5. En **4. Número de rollo** salen solos los rollos que elegiste de muestra: revisa que estén identificados, legibles y en la lista, y márcalo OK / NOK / N/A.
+6. Marca OK / NOK / N/A, elige el resultado y toca **✅ Terminar inspección**. Todos los rollos del lote cambian de estado.
+7. Toca **🖨️ Imprimir / PDF**: sale con el formato FR-AL-016-01.
 
 ### 3. Inventario
 - **📦 Inventario**: rollos y metros por número de parte, por lote, estado y ubicación. Filtros y **📊 Exportar a Excel**.

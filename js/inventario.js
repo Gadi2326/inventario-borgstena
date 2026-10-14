@@ -142,14 +142,14 @@ function vistaRollo(id) {
     ) : null,
     h('div', { class: 'card datos-grid' },
       dato('No. parte', r.parte), dato('Lote proveedor', r.lote_proveedor), dato('Descripción', r.descripcion),
-      dato('Metros', `${fmtNum(r.largo_actual_m)} de ${fmtNum(r.largo_m)}`), dato('Peso teórico', fmtKg(r.peso_teorico_kg)),
+      dato('Metros', r.largo_m ? `${fmtNum(r.largo_actual_m)} de ${fmtNum(r.largo_m)}` : null), dato('Peso teórico', fmtKg(r.peso_teorico_kg)),
       desc ? dato('Medidas nominales', `${desc.ancho_m} m ancho · ${desc.espesor_mm} mm · ${desc.densidad} kg/m³`) : null,
       desc && desc.extra ? dato('Códigos', desc.extra.split(/\s+/).map((cd) => {
         const s = (Store.get('codigos', cd) || {}).significado;
         return s ? `${cd} = ${s}` : `${cd} (¿?)`;
       }).join(' · ')) : null,
       dato('Producido (LOTE etiqueta)', r.lote_produccion ? `${r.lote_produccion} → ${fmtLoteProduccion(r.lote_produccion)}` : null),
-      dato('Recepción', rec.id ? h('a', { href: '#/recepcion/' + rec.id }, `Factura ${rec.factura} (${fmtFecha(rec.fecha)})`) : null),
+      dato('Recepción', rec.id ? h('a', { href: '#/recepcion/' + rec.id }, `Factura ${rec.factura || '—'} · PO ${rec.po || '—'} (${fmtFecha(rec.fecha)})`) : null),
       dato('Recibió', r.recibido ? `${r.recibido_por || ''} · ${fmtFechaHora(r.recibido_en)}` : 'No recibido'),
       dato('Inspección', ins ? h('a', { href: '#/inspeccion/' + ins.id }, `${ins.codigo}${r.muestreado ? ' (rollo muestreado)' : ''}`) : 'Pendiente'),
       r.marca_punto ? dato('Hoja de papel', 'Marcado con punto •') : null,
@@ -180,6 +180,11 @@ function vistaRollo(id) {
       movs.length ? movs.map((m) => h('div', { class: 'mov' },
         h('span', { class: 'muted' }, fmtFechaHora(m.fecha)), ' · ', h('b', {}, m.usuario || '—'), ' · ', m.detalle)) : h('p', { class: 'muted' }, 'Sin movimientos.'),
     ),
+    Sesion.puede('aprobar') ? h('div', { class: 'acciones' },
+      h('button', { class: 'btn btn-peligro', onclick: () => {
+        if (eliminarRollos([r], `el rollo ${r.no_rollo}`)) App.ir(rec.id ? '/recepcion/' + rec.id : '/inventario');
+      } }, '🗑️ Eliminar este rollo (capturado por error)'),
+    ) : null,
   );
 }
 

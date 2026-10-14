@@ -5,6 +5,7 @@ const SEC2 = [
   ['Número de parte', 'PO/BOM'],
   ['Descripción', 'PO/BOM'],
   ['Lote', 'Identificado y legible'],
+  ['Número de rollo', 'Identificado, legible y en la lista de embarque'],
   ['Etiqueta de proveedor', 'Completa y legible'],
   ['Cantidad', 'Conforme a PO y PL'],
   ['Certificado de calidad', 'Disponible (si aplica)'],
@@ -19,6 +20,12 @@ const SEC3 = [
   ['Flamabilidad', 'Test de flamabilidad'],
   ['Daños', 'Visual'],
 ];
+const I_ROLLO = 3; // renglón "Número de rollo" de la sección 2
+
+// Las hojas creadas antes de agregar "Número de rollo" traen un renglón menos en la sección 2
+function normalizarInspeccion(ins) {
+  if (ins.d.sec2.length < SEC2.length) ins.d.sec2.splice(I_ROLLO, 0, { res: '', eval: '' });
+}
 const RESULTADOS = { aceptado: 'Aceptado', rechazado: 'Rechazado', desviacion: 'Aceptado con desviación' };
 
 // Grupos lote + parte de cada recepción que ya tienen rollos recibidos
@@ -66,7 +73,7 @@ function crearInspeccion(g) {
       cantidad_recibida_m: metros, certificado: 'N/A', po: rec.po || '', proveedor: prov ? prov.nombre : rec.proveedor,
       inspector: Sesion.usuario().nombre, coa: 'N/A',
       muestra: sugeridos.length ? sugeridos.slice(0, 3) : [g.rollos[0].id],
-      sec2: SEC2.map((_, i) => ({ res: [g.parte, g.rollos[0].descripcion || '', g.lote, '', fmtM(metros), 'N/A', '', ''][i] || '', eval: '' })),
+      sec2: SEC2.map((_, i) => ({ res: [g.parte, g.rollos[0].descripcion || '', g.lote, '', '', fmtM(metros), 'N/A', '', ''][i] || '', eval: '' })),
       sec3: SEC3.map(() => ({ res: '', eval: '' })),
       ancho_m: '', espesores: ['', '', ''], peso_real_kg: '', largo_pesado_m: '',
       plan: '10', aprobado: '', revisado: '',
@@ -105,7 +112,7 @@ function filaGrupo(g) {
   return h('div', { class: 'fila-grupo' },
     h('div', {},
       h('b', {}, `${g.parte} · lote ${g.lote}`),
-      h('div', { class: 'muted' }, `${g.rollos.length} rollos · ${fmtM(metros)} · factura ${rec ? rec.factura : ''} (${rec ? fmtFecha(rec.fecha) : ''})`),
+      h('div', { class: 'muted' }, `${g.rollos.length} rollos · ${fmtM(metros)} · factura ${rec ? rec.factura || '—' : ''} (${rec ? fmtFecha(rec.fecha) : ''})`),
       alertas ? h('div', { class: 'texto-rojo' }, `⚠️ ${alertas} rollo(s) con alerta`) : null,
     ),
     g.inspeccion
@@ -158,6 +165,7 @@ function calculos(ins) {
 function vistaInspeccion(id) {
   const ins = Store.get('inspecciones', id);
   if (!ins) return h('div', { class: 'card' }, 'No existe esta inspección.');
+  normalizarInspeccion(ins);
   const d = ins.d;
   const c = calculos(ins);
   const bloqueada = ins.estado === 'terminada';
@@ -182,18 +190,28 @@ function vistaInspeccion(id) {
   if (!bloqueada) {
     d.sec3[1].res = c.densidad ? `${fmtNum(c.densidad, 1)} kg/m³` : '';
     d.sec3[0].res = d.ancho_m ? `${fmtNum(Number(d.ancho_m), 3)} m` : '';
+    // Número de rollo: se llena con los rollos de la muestra mientras no lo escribas a mano
+    const nums = c.muestra.map((r) => r.no_rollo).join(', ');
+    const fila = d.sec2[I_ROLLO];
+    if (!fila.res || fila.res === d.rollos_auto) { fila.res = nums; d.rollos_auto = nums; }
     guardar();
   }
 
   const alertasGrupo = c.rollos.filter((r) => r.alertas && r.alertas.length);
   const rec = Store.get('recepciones', ins.recepcion_id);
+  const fueraLista = c.rollos.filter((r) => !r.en_lista).length;
+  const avisoSec2 = (i) => {
+    if (i === 2 && alertasGrupo.some((r) => r.lote_etiqueta && r.lote_etiqueta !== r.lote_proveedor)) return '⚠️ Hay etiquetas con otro lote';
+    if (i === I_ROLLO && fueraLista) return `⚠️ ${fueraLista} rollo(s) no vienen en la lista`;
+    return null;
+  };
 
   return h('div', { class: 'inspeccion' },
     h('div', { class: 'fila-entre' },
       h('h1', {}, `Inspección ${ins.codigo}`),
       bloqueada ? chipResultado(d.resultado) : h('span', { class: 'chip amarillo' }, 'Borrador'),
     ),
-    h('p', { class: 'muted' }, `FR-AL-016-01 Rev. 01 · ${ins.parte} · lote ${ins.lote} · ${c.rollos.length} rollos · factura ${rec ? rec.factura : ''}`),
+    h('p', { class: 'muted' }, `FR-AL-016-01 Rev. 01 · ${ins.parte} · lote ${ins.lote} · ${c.rollos.length} rollos · factura ${rec ? rec.factura || '—' : ''}`),
 
     alertasGrupo.length ? h('div', { class: 'card borde-rojo' },
       h('b', {}, '⚠️ Rollos de este lote con alerta:'),
@@ -235,7 +253,7 @@ function vistaInspeccion(id) {
       SEC2.map(([car, req], i) => h('div', { class: 'renglon-insp' },
         h('div', { class: 'ri-car' }, h('b', {}, `${i + 1}. ${car}`), h('span', { class: 'muted' }, req)),
         resInp(d.sec2, i),
-        evalBtns(d.sec2, i, i === 2 && alertasGrupo.some((r) => r.lote_etiqueta && r.lote_etiqueta !== r.lote_proveedor) ? '⚠️ Hay etiquetas con otro lote' : null),
+        evalBtns(d.sec2, i, avisoSec2(i)),
       )),
     ),
 
@@ -369,6 +387,7 @@ function vistaInspeccion(id) {
 }
 
 function terminarInspeccion(ins) {
+  normalizarInspeccion(ins);
   const d = ins.d;
   if (!d.resultado) return toast('Elige el resultado (Aceptado, Rechazado o Aceptado con desviación).', 'error');
   if (!d.muestra.length) return toast('Elige al menos un rollo inspeccionado.', 'error');
@@ -401,6 +420,7 @@ function terminarInspeccion(ins) {
 function vistaImprimirInspeccion(id) {
   const ins = Store.get('inspecciones', id);
   if (!ins) return h('div', { class: 'card' }, 'No existe esta inspección.');
+  normalizarInspeccion(ins);
   const d = ins.d;
   const c = calculos(ins);
   const caja = (on) => h('span', { class: 'p-caja' }, on ? '✔' : '');

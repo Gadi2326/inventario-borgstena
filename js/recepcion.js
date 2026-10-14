@@ -12,6 +12,29 @@ function agregarAlerta(rollo, msg) {
   if (!rollo.alertas.includes(msg)) rollo.alertas.push(msg);
 }
 
+// Elimina rollos capturados por error (con su historial). Siempre pregunta antes. Regresa true si se borraron.
+function eliminarRollos(rollos, que) {
+  if (!Sesion.puede('aprobar')) { toast('Solo un supervisor puede eliminar rollos.', 'error'); return false; }
+  if (!rollos.length) return false;
+  const metros = rollos.reduce((s, r) => s + (r.largo_m || 0), 0);
+  const lista = rollos.slice(0, 10).map((r) => '• ' + r.no_rollo).join('\n') + (rollos.length > 10 ? `\n… y ${rollos.length - 10} más` : '');
+  if (!confirmar(`¿Estás seguro de ELIMINAR ${que}?\n\n${rollos.length} rollo(s)${metros ? ` · ${fmtNum(metros)} m` : ''}\n${lista}\n\n`
+    + `Se borran${NUBE ? ' para todos' : ''} junto con su historial y NO se puede deshacer.`)) return false;
+  const ids = new Set(rollos.map((r) => r.id));
+  // Quitarlos de las hojas de inspección (si una hoja se queda sin rollos, se borra)
+  for (const ins of Store.where('inspecciones', (i) => i.rollos.some((x) => ids.has(x)))) {
+    ins.rollos = ins.rollos.filter((x) => !ids.has(x));
+    ins.d.muestra = ins.d.muestra.filter((x) => !ids.has(x));
+    ins.d.rechazados = ins.d.rechazados.filter((x) => !ids.has(x));
+    if (ins.rollos.length) Store.put('inspecciones', ins); else Store.remove('inspecciones', ins.id);
+  }
+  for (const m of Store.where('movimientos', (x) => ids.has(x.rollo_id))) Store.remove('movimientos', m.id);
+  for (const id of ids) Store.remove('rollos', id);
+  for (const k of Object.keys(ultimoEscaneo)) if (ids.has(ultimoEscaneo[k].rolloId)) delete ultimoEscaneo[k];
+  toast(`Se eliminaron ${rollos.length} rollo(s).`);
+  return true;
+}
+
 function nombreProveedor(id) {
   const p = Store.get('proveedores', id);
   return p ? p.nombre : id || '';
@@ -255,19 +278,21 @@ function tablaResumenLotes(rollos) {
   const grupos = new Map();
   for (const r of rollos) {
     const k = `${r.parte || '¿?'}|${r.lote_proveedor || '¿?'}`;
-    if (!grupos.has(k)) grupos.set(k, { parte: r.parte || '¿?', lote: r.lote_proveedor || '¿?', esp: 0, espM: 0, rec: 0, recM: 0, sob: 0 });
+    if (!grupos.has(k)) grupos.set(k, { parte: r.parte || '¿?', lote: r.lote_proveedor || '¿?', esp: 0, espM: 0, rec: 0, recM: 0, sob: 0, rollos: [] });
     const g = grupos.get(k);
+    g.rollos.push(r);
     if (r.en_lista) { g.esp++; g.espM += r.largo_m || 0; }
     if (r.recibido) { g.rec++; g.recM += r.largo_m || 0; }
     if (!r.en_lista) g.sob++;
   }
   const gs = [...grupos.values()].sort((a, b) => (a.parte + a.lote).localeCompare(b.parte + b.lote));
   const tot = gs.reduce((t, g) => ({ esp: t.esp + g.esp, espM: t.espM + g.espM, rec: t.rec + g.rec, recM: t.recM + g.recM }), { esp: 0, espM: 0, rec: 0, recM: 0 });
+  const borrar = Sesion.puede('aprobar');
   return h('div', { class: 'card' },
     h('h2', {}, 'Rollos por número de parte y lote'),
     h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
       h('thead', {}, h('tr', {}, h('th', {}, 'No. parte'), h('th', {}, 'Lote'), h('th', { class: 'num' }, 'En lista'),
-        h('th', { class: 'num' }, 'Recibidos'), h('th', { class: 'num' }, 'Metros recibidos'), h('th', {}, ''))),
+        h('th', { class: 'num' }, 'Recibidos'), h('th', { class: 'num' }, 'Metros recibidos'), h('th', {}, ''), borrar ? h('th', {}, '') : null)),
       h('tbody', {}, gs.map((g) => h('tr', {},
         h('td', {}, g.parte), h('td', {}, g.lote),
         h('td', { class: 'num' }, g.esp), h('td', { class: 'num' }, g.rec),
@@ -275,9 +300,13 @@ function tablaResumenLotes(rollos) {
         h('td', {}, g.sob ? h('span', { class: 'chip rojo' }, `+${g.sob} fuera de lista`)
           : g.rec === g.esp ? h('span', { class: 'chip verde' }, '✓ Completo')
             : h('span', { class: 'chip amarillo' }, `Faltan ${g.esp - g.rec}`)),
+        borrar ? h('td', {}, h('button', {
+          class: 'btn btn-chico btn-peligro', title: 'Eliminar todos los rollos de este lote en esta recepción',
+          onclick: () => { if (eliminarRollos(g.rollos, `el lote ${g.lote} (${g.parte}) de esta recepción`)) App.refrescar(); },
+        }, '🗑️ Eliminar lote')) : null,
       ))),
       h('tfoot', {}, h('tr', {}, h('td', { colspan: 2 }, 'Total'), h('td', { class: 'num' }, tot.esp),
-        h('td', { class: 'num' }, tot.rec), h('td', { class: 'num' }, fmtM(tot.recM)), h('td', {}, ''))),
+        h('td', { class: 'num' }, tot.rec), h('td', { class: 'num' }, fmtM(tot.recM)), h('td', {}, ''), borrar ? h('td', {}, '') : null)),
     )),
   );
 }
@@ -311,15 +340,21 @@ function totalesPapel(rec, rollos) {
 
 function tablaRollos(rollos, conPalomita = false) {
   if (!rollos.length) return h('p', { class: 'muted' }, 'Ninguno.');
+  const borrar = Sesion.puede('aprobar');
   return h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
     h('thead', {}, h('tr', {},
       conPalomita ? h('th', {}, '✓') : null,
-      h('th', {}, 'No. rollo'), h('th', {}, 'No. parte'), h('th', {}, 'Lote'), h('th', { class: 'num' }, 'Largo'), h('th', {}, 'Estado'))),
+      h('th', {}, 'No. rollo'), h('th', {}, 'No. parte'), h('th', {}, 'Lote'), h('th', { class: 'num' }, 'Largo'), h('th', {}, 'Estado'),
+      borrar ? h('th', {}, '') : null)),
     h('tbody', {}, rollos.map((r) => h('tr', { class: r.alertas && r.alertas.length ? 'fila-alerta' : '' },
       conPalomita ? h('td', { class: 'centro' }, r.recibido ? '✅' : '⬜') : null,
       h('td', {}, h('a', { href: '#/rollo/' + encodeURIComponent(r.id) }, r.no_rollo), r.marca_punto ? h('span', { title: 'Marcado con punto en la hoja de papel' }, ' •') : null),
       h('td', {}, r.parte || '¿?'), h('td', {}, r.lote_proveedor || '¿?'),
       h('td', { class: 'num' }, fmtM(r.largo_m)), h('td', {}, etiquetaEstado(r.estado)),
+      borrar ? h('td', {}, h('button', {
+        class: 'btn btn-chico btn-peligro', title: 'Eliminar este rollo',
+        onclick: () => { if (eliminarRollos([r], `el rollo ${r.no_rollo}`)) App.refrescar(); },
+      }, '🗑️')) : null,
     ))),
   ));
 }
