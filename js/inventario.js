@@ -180,7 +180,7 @@ function vistaRollo(id) {
       movs.length ? movs.map((m) => h('div', { class: 'mov' },
         h('span', { class: 'muted' }, fmtFechaHora(m.fecha)), ' · ', h('b', {}, m.usuario || '—'), ' · ', m.detalle)) : h('p', { class: 'muted' }, 'Sin movimientos.'),
     ),
-    Sesion.puede('aprobar') ? h('div', { class: 'acciones' },
+    Sesion.puede('eliminar') ? h('div', { class: 'acciones' },
       h('button', { class: 'btn btn-peligro', onclick: () => {
         if (eliminarRollos([r], `el rollo ${r.no_rollo}`)) App.ir(rec.id ? '/recepcion/' + rec.id : '/inventario');
       } }, '🗑️ Eliminar este rollo (capturado por error)'),

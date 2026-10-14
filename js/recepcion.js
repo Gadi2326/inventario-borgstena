@@ -14,7 +14,7 @@ function agregarAlerta(rollo, msg) {
 
 // Elimina rollos capturados por error (con su historial). Siempre pregunta antes. Regresa true si se borraron.
 function eliminarRollos(rollos, que) {
-  if (!Sesion.puede('aprobar')) { toast('Solo un supervisor puede eliminar rollos.', 'error'); return false; }
+  if (!Sesion.puede('eliminar')) { toast('Tu usuario no puede eliminar rollos.', 'error'); return false; }
   if (!rollos.length) return false;
   const metros = rollos.reduce((s, r) => s + (r.largo_m || 0), 0);
   const lista = rollos.slice(0, 10).map((r) => '• ' + r.no_rollo).join('\n') + (rollos.length > 10 ? `\n… y ${rollos.length - 10} más` : '');
@@ -287,7 +287,7 @@ function tablaResumenLotes(rollos) {
   }
   const gs = [...grupos.values()].sort((a, b) => (a.parte + a.lote).localeCompare(b.parte + b.lote));
   const tot = gs.reduce((t, g) => ({ esp: t.esp + g.esp, espM: t.espM + g.espM, rec: t.rec + g.rec, recM: t.recM + g.recM }), { esp: 0, espM: 0, rec: 0, recM: 0 });
-  const borrar = Sesion.puede('aprobar');
+  const borrar = Sesion.puede('eliminar');
   return h('div', { class: 'card' },
     h('h2', {}, 'Rollos por número de parte y lote'),
     h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
@@ -340,7 +340,7 @@ function totalesPapel(rec, rollos) {
 
 function tablaRollos(rollos, conPalomita = false) {
   if (!rollos.length) return h('p', { class: 'muted' }, 'Ninguno.');
-  const borrar = Sesion.puede('aprobar');
+  const borrar = Sesion.puede('eliminar');
   return h('div', { class: 'tabla-scroll' }, h('table', { class: 'tabla' },
     h('thead', {}, h('tr', {},
       conPalomita ? h('th', {}, '✓') : null,

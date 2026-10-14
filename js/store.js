@@ -316,9 +316,9 @@ const Sesion = {
     const u = this.usuario();
     if (!u) return false;
     const permisos = {
-      almacenista: ['recibir', 'mover'],
-      inspector: ['recibir', 'mover', 'inspeccionar'],
-      supervisor: ['recibir', 'mover', 'inspeccionar', 'aprobar', 'configurar'],
+      almacenista: ['recibir', 'mover', 'eliminar'],
+      inspector: ['recibir', 'mover', 'inspeccionar', 'eliminar'],
+      supervisor: ['recibir', 'mover', 'inspeccionar', 'eliminar', 'aprobar', 'configurar'],
     };
     return (permisos[u.rol] || []).includes(accion);
   },
@@ -326,10 +326,16 @@ const Sesion = {
 
 // Primera vez que alguien entra en la nube: se le crea su perfil.
 // El primer usuario de todos queda como supervisor; los demás como almacenista (el supervisor les cambia el rol).
+// Si nadie es supervisor (por ejemplo, después de borrar datos), el que entra queda como supervisor para no quedarse sin acceso a Ajustes.
 function asegurarPerfilNube() {
   const a = Store.usuarioAuth();
-  if (!a || Store.get('usuarios', a.id)) return;
+  if (!a) return;
   const haySupervisor = Store.all('usuarios').some((u) => u.rol === 'supervisor' && u.activo);
+  const yo = Store.get('usuarios', a.id);
+  if (yo) {
+    if (!haySupervisor && yo.activo) { yo.rol = 'supervisor'; Store.put('usuarios', yo); }
+    return;
+  }
   Store.put('usuarios', {
     id: a.id, email: a.email, nombre: a.email.split('@')[0],
     rol: haySupervisor ? 'almacenista' : 'supervisor', activo: true,

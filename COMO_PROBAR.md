@@ -55,10 +55,10 @@ También acepta texto copiado de un PDF o correo, o un **Excel**.
 - En **⚙️ Ajustes → Proveedores** cambias nombres o desactivas proveedores.
 - En **⚙️ Ajustes → Números de parte** agregas números de parte nuevos con su espesor, tolerancia, ancho, densidad y largo normal del rollo. Los que se crearon solos desde una lista salen con ⚠️ para que revises sus medidas.
 
-### Eliminar rollos o lotes capturados por error (solo supervisor)
+### Eliminar rollos o lotes capturados por error
 - En la recepción, cada rollo de las tablas tiene un botón **🗑️**, y en **Rollos por número de parte y lote** está **🗑️ Eliminar lote**.
 - En la ficha de un rollo, hasta abajo: **🗑️ Eliminar este rollo**.
-- Siempre pregunta **"¿Estás seguro?"** con la lista de rollos y metros. Se borran para todos con su historial y no se puede deshacer.
+- Lo puede hacer cualquier usuario (Ajustes sigue siendo solo del supervisor). Siempre pregunta **"¿Estás seguro?"** con la lista de rollos y metros. Se borran para todos con su historial y no se puede deshacer.
 
 ### 2. Inspección
 1. Abajo, en **📋 Inspección por lote**, toca **Inspeccionar** en `SPONGE-A527GN · lote Z-901-01-01`.
