@@ -1,5 +1,8 @@
 // Arranque de la app, menú y navegación entre pantallas.
 
+// Cámbiala junto con version.json cada vez que se publiquen cambios: así los celulares se actualizan solos.
+const VERSION_APP = '2026-10-14a';
+
 const App = {
   almacen() {
     try { return localStorage.getItem('almacen') || 'FOAM'; } catch (e) { return 'FOAM'; }
@@ -41,6 +44,18 @@ async function recargarSinCache() {
   const archivos = [location.pathname, ...[...document.querySelectorAll('script[src], link[rel=stylesheet]')].map((el) => el.src || el.href)];
   await Promise.all(archivos.map((u) => fetch(u, { cache: 'reload' }).catch(() => {})));
   location.reload();
+}
+
+// Si hay una versión nueva publicada, recarga la app (una sola vez por versión, para no ciclarse)
+async function revisarVersion() {
+  try {
+    const r = await fetch('version.json', { cache: 'no-store' });
+    const { version } = await r.json();
+    if (!version || version === VERSION_APP) return;
+    if (sessionStorage.getItem('actualizando') === version) return;
+    sessionStorage.setItem('actualizando', version);
+    await recargarSinCache();
+  } catch (e) { /* sin señal o modo privado: seguimos con la versión que hay */ }
 }
 
 function renderRuta() {
@@ -206,6 +221,7 @@ function vistaInicio() {
       conAlerta.map((r) => h('a', { class: 'fila-link', href: '#/rollo/' + encodeURIComponent(r.id) },
         h('b', {}, r.no_rollo), ' — ', r.alertas.join('; '))),
     ) : null,
+    h('p', { class: 'muted centro' }, `Versión ${VERSION_APP} · ${Sesion.usuario().nombre} (${Sesion.usuario().rol})`),
   );
 }
 
@@ -260,4 +276,6 @@ document.addEventListener('focusout', () => setTimeout(() => refrescoPendiente &
     else { clearTimeout(timer); timer = setTimeout(refrescarSiSeguro, 400); }
   });
   App.refrescar();
+  revisarVersion();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarVersion(); });
 })();
