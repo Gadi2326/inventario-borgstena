@@ -144,10 +144,6 @@ function vistaRollo(id) {
       dato('No. parte', r.parte), dato('Lote proveedor', r.lote_proveedor), dato('Descripción', r.descripcion),
       dato('Metros', r.largo_m ? `${fmtNum(r.largo_actual_m)} de ${fmtNum(r.largo_m)}` : null), dato('Peso teórico', fmtKg(r.peso_teorico_kg)),
       desc ? dato('Medidas nominales', `${desc.ancho_m} m ancho · ${desc.espesor_mm} mm · ${desc.densidad} kg/m³`) : null,
-      desc && desc.extra ? dato('Códigos', desc.extra.split(/\s+/).map((cd) => {
-        const s = (Store.get('codigos', cd) || {}).significado;
-        return s ? `${cd} = ${s}` : `${cd} (¿?)`;
-      }).join(' · ')) : null,
       dato('Producido (LOTE etiqueta)', r.lote_produccion ? `${r.lote_produccion} → ${fmtLoteProduccion(r.lote_produccion)}` : null),
       dato('Recepción', rec.id ? h('a', { href: '#/recepcion/' + rec.id }, `Factura ${rec.factura || '—'} · PO ${rec.po || '—'} (${fmtFecha(rec.fecha)})`) : null),
       dato('Recibió', r.recibido ? `${r.recibido_por || ''} · ${fmtFechaHora(r.recibido_en)}` : 'No recibido'),
@@ -287,14 +283,6 @@ function vistaConfig() {
           App.refrescar();
         } }, '➕ Agregar'),
       ),
-    ),
-    h('div', { class: 'card' },
-      h('h2', {}, 'Significado de códigos de la descripción'),
-      h('p', { class: 'muted' }, 'Cuando sepas qué significa cada código, escríbelo aquí.'),
-      Store.all('codigos').map((c) => h('div', { class: 'fila' },
-        h('b', { class: 'cod' }, c.id),
-        h('input', { value: c.significado, placeholder: '¿Qué significa?', onchange: (e) => { c.significado = e.target.value; Store.put('codigos', c); toast('Guardado.'); } }),
-      )),
     ),
     seccionProveedores(alm),
     seccionPartes(alm),

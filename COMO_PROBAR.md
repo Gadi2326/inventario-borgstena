@@ -75,7 +75,6 @@ También acepta texto copiado de un PDF o correo, o un **Excel**.
 
 ### 4. Ajustes (solo supervisor)
 - Agregar o renombrar **ubicaciones** (racks, zonas).
-- Escribir el **significado de 035L, ST, GRS, RB** cuando lo sepas.
 - Tolerancias de cada número de parte, usuarios, **respaldo** y **♻️ Reiniciar con datos de prueba**.
 
 ## Cámara del celular

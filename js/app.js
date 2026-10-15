@@ -1,7 +1,7 @@
 // Arranque de la app, menú y navegación entre pantallas.
 
 // Cámbiala junto con version.json cada vez que se publiquen cambios: así los celulares se actualizan solos.
-const VERSION_APP = '2026-10-14b';
+const VERSION_APP = '2026-10-14c';
 
 const App = {
   almacen() {
