@@ -133,6 +133,7 @@ h3 { font-size: 1rem; margin: 18px 0 8px; }
 .tabla tfoot td { font-weight: 700; }
 .tabla .num { text-align: right; }
 .fila-alerta td { background: var(--rojo-bg); }
+.fila-separador td { background: var(--azul-bg); color: var(--azul); font-weight: 700; font-size: .9rem; }
 .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .85rem; font-weight: 600; white-space: nowrap; }
 .chip.chico { font-size: .78rem; padding: 2px 8px; margin: 1px 3px 1px 0; }
 .chip.verde { background: var(--verde-bg); color: var(--verde); }
@@ -177,6 +178,8 @@ h2.sec { background: var(--azul); color: #fff; margin: -14px -14px 12px; padding
 .espesores { display: flex; flex-wrap: wrap; gap: 6px; }
 .espesores input { flex: 1 1 110px; }
 .chips-rollos { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.resumen-partes { display: grid; gap: 4px; margin: 8px 0; font-size: .92rem; }
+.leer-ia h3:first-child { margin-top: 0; }
 .chip-rollo { font: .9rem ui-monospace, monospace; padding: 10px; border-radius: 8px; border: 2px solid var(--borde); background: #fff; cursor: pointer; min-height: 44px; }
 .chip-rollo.sel { background: var(--azul2); color: #fff; border-color: var(--azul2); }
 .chip-rollo.rech { background: var(--rojo); color: #fff; border-color: var(--rojo); }

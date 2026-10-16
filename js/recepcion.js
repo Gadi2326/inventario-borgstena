@@ -88,6 +88,13 @@ function agregarProveedor(alm) {
   return final;
 }
 
+function avisoFacturaRepetida(factura, excluirId) {
+  const otra = recepcionConFactura(factura, excluirId);
+  return otra ? h('div', { class: 'calc texto-rojo' },
+    `⚠️ DUPLICADO: la factura ${otra.factura} ya está registrada (recepción del ${fmtFecha(otra.fecha)}). `,
+    h('a', { href: '#/recepcion/' + otra.id }, 'Ver esa recepción')) : null;
+}
+
 function vistaRecepcionNueva() {
   const alm = App.almacen();
   const provs = proveedoresActivos(alm);
@@ -106,6 +113,7 @@ function vistaRecepcionNueva() {
 
     h('details', { class: 'card card-rapido', open: !b.filas },
       h('summary', {}, h('b', {}, '⚡ Llenar rápido con una foto de la lista')),
+      b.filas ? null : avisosLectura(b.avisos),
       bloquePegarLista(b, {
         alLeer: (r) => {
           b.leidos = Object.keys(r.encabezado);
@@ -127,9 +135,11 @@ function vistaRecepcionNueva() {
       ),
     ),
 
+    b.filas && b.avisos && b.avisos.length ? avisosLectura(b.avisos) : null,
     h('div', { class: 'card' },
       h('h2', {}, 'Encabezado de la lista de embarque'),
       b.leidos && b.leidos.length ? h('p', { class: 'muted' }, 'Los campos en verde se llenaron solos: revísalos.') : null,
+      avisoFacturaRepetida(f.factura),
       h('div', { class: 'form-grid' },
         h('label', { class: 'campo' + (b.leidos && b.leidos.includes('proveedor') ? ' leido' : '') }, 'Proveedor',
           h('div', { class: 'fila' },
@@ -160,6 +170,8 @@ function vistaRecepcionNueva() {
         onclick: () => {
           if (!f.factura && !f.po) return toast('Escribe al menos la factura o el PO.', 'error');
           if (!f.proveedor) return toast('Elige o agrega el proveedor.', 'error');
+          const otra = recepcionConFactura(f.factura);
+          if (otra && !confirmar(`⚠️ La factura ${f.factura} YA está registrada (recepción del ${fmtFecha(otra.fecha)}). Puede ser una lista DUPLICADA. ¿Crear otra recepción de todos modos?`)) return;
           const filas = b.filas ? revisarFilas(b.filas) : [];
           const malas = filas.filter((x) => x.bloqueante).length;
           if (malas && !confirmar(`${malas} renglón(es) en rojo no se guardarán. ¿Continuar?`)) return;
@@ -492,8 +504,12 @@ function capturaLista(rec) {
 
     h('h3', {}, '📷 Desde una foto o texto'),
     bloquePegarLista(b, {
-      alLeer: (r) => { b.filas = r.filas; b.totales = r.totales; App.refrescar(); },
+      alLeer: (r) => { b.filas = r.filas; b.totales = r.totales; b.factura = r.encabezado && r.encabezado.factura; App.refrescar(); },
     }),
+    avisosLectura(b.avisos),
+    b.filas && b.factura && !mismaFactura(b.factura, rec.factura) ? h('div', { class: 'calc texto-rojo' },
+      `⚠️ Esta hoja es de la factura ${b.factura}, pero esta recepción es de la factura ${rec.factura || '(sin factura)'}. Revisa que sea la lista correcta.`) : null,
+    b.filas && b.factura ? avisoFacturaRepetida(b.factura, rec.id) : null,
     b.filas ? h('div', {},
       resumenFilas(b.filas, b.totales),
       tablaRevisionFilas(b.filas, () => App.refrescar()),

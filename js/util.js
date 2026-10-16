@@ -125,7 +125,7 @@ function fmtLoteProduccion(l) {
 }
 
 // Comprime una foto del celular para guardarla sin ocupar mucho espacio.
-function comprimirFoto(file, max = 1280) {
+function comprimirFoto(file, max = 1280, calidad = 0.75) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -135,7 +135,7 @@ function comprimirFoto(file, max = 1280) {
       c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(img.src);
-      resolve(c.toDataURL('image/jpeg', 0.75));
+      resolve(c.toDataURL('image/jpeg', calidad));
     };
     img.onerror = reject;
     img.src = URL.createObjectURL(file);
