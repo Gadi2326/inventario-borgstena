@@ -208,6 +208,19 @@ const Store = (() => {
       usuarioAuth = null;
       cambiarEstado('desconectado');
     },
+    // Llama a una función de Supabase (ej. "leer-lista", la lectura con IA)
+    async funcion(nombre, cuerpo) {
+      if (!sb || !usuarioAuth) throw new Error('Necesitas estar conectado a la nube con tu usuario.');
+      const { data, error } = await sb.functions.invoke(nombre, { body: cuerpo });
+      if (error) {
+        let msg = error.message;
+        if (error.context && error.context.status === 404) msg = `Todavía no está instalada la función "${nombre}" en Supabase (ver PASOS_NUBE.md, Parte C).`;
+        else if (/fetch|network/i.test(msg)) msg = 'Sin señal: no se pudo mandar la foto. Intenta otra vez.';
+        try { msg = (await error.context.json()).error || msg; } catch (e) { /* sin detalle */ }
+        throw new Error(msg);
+      }
+      return data;
+    },
     estado: () => estado,
     pendientes: () => outbox.size,
     alCambiar(fn) { oyentes.push(fn); },

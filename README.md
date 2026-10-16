@@ -18,4 +18,5 @@ Los datos de prueba incluidos son **inventados**.
 | `js/recepcion.js` · `js/inspeccion.js` · `js/inventario.js` | Pantallas |
 | `js/seed.js` | Catálogos y datos de prueba inventados |
 | `supabase/schema.sql` | Tabla y permisos de la base de datos |
+| `supabase/functions/leer-lista/` | Función que lee la foto de la lista de embarque con IA (Gemini) |
 | `vendor/` | Librerías: lector de códigos, Excel y Supabase |

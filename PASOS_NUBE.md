@@ -39,6 +39,44 @@ Ya está publicada con **GitHub Pages**: **https://gadi2326.github.io/inventario
 - Cada vez que se suben cambios a GitHub, la página se actualiza sola en 1–2 minutos.
 - En el celular: abre la dirección → menú del navegador → **"Agregar a pantalla de inicio"**.
 
+## Parte C · Leer la lista de embarque con IA (Gemini, gratis)
+
+La app manda la foto de la lista a una función de Supabase (`leer-lista`), y esa función se la pasa a Gemini (IA de Google).
+La clave de Google se guarda **solo en Supabase**, nunca en la página (la página es pública en GitHub).
+
+### C1. Crear una cuenta de Google SOLO para la app
+- Crea una cuenta de Gmail nueva (ej. `inventario.borgstena@gmail.com`). Así nada queda ligado a tu cuenta personal.
+- Guarda la contraseña en un lugar seguro: la van a necesitar si algún día hay que cambiar la clave.
+
+### C2. Sacar la clave gratis de Gemini
+1. Con esa cuenta nueva entra a **https://aistudio.google.com**.
+2. Acepta los términos y toca **Get API key** → **Create API key**.
+3. Copia la clave (es un texto largo). **No la mandes por chat ni la pegues en la página.**
+- Es gratis y no pide tarjeta. Si algún día te pide tarjeta o "activar facturación", **no lo hagas**: así nunca te pueden cobrar.
+
+### C3. Guardar la clave en Supabase
+1. supabase.com → tu proyecto → **Edge Functions** → **Secrets**.
+2. **Add new secret**: Name = `GEMINI_API_KEY`, Value = la clave que copiaste → **Save**.
+
+### C4. Subir la función `leer-lista`
+1. Abre el código: https://github.com/Gadi2326/inventario-borgstena/blob/main/supabase/functions/leer-lista/index.ts
+   y toca el botón **Copy raw file** (el de los dos cuadritos, arriba a la derecha del código).
+2. supabase.com → tu proyecto → **Edge Functions** → **Deploy a new function** → **Via Editor**.
+3. Borra el ejemplo que trae y pega el código.
+4. **Abajo**, en el cuadro del nombre (trae uno de ejemplo como "bright-worker"), escribe `leer-lista` (exacto, con guion)
+   **antes** de tocar **Deploy function**. Después ya no se puede cambiar la dirección.
+5. Ya subida: pestaña **Settings** → **apaga** "Verify JWT with legacy secret" → **Save changes**.
+   No queda abierta: el código revisa solo que quien la usa tenga sesión iniciada en la app.
+
+### C5. Probar
+En la app: **Recepción → Nueva recepción → ⚡ Llenar rápido → 📷 Foto a la lista**.
+Tarda entre 10 y 60 segundos. Si sale un error, lee el mensaje: dice si falta la clave, si la clave está mal o si se acabó el límite gratis.
+
+- **Límite gratis:** Google pone un límite por minuto y por día. Para 1–3 hojas al día sobra.
+- **Privacidad:** en la versión gratis Google puede guardar las fotos y usarlas para mejorar su IA (no se publican).
+- **Cambiar de modelo** (si Google retira el actual): en Secrets agrega `GEMINI_MODELO` con el nombre nuevo, sin tocar el código.
+- Si la IA no funciona, el botón de **pegar texto** sigue funcionando como antes.
+
 ## Notas
 - La primera vez que alguien entra, si la nube está vacía, se cargan los catálogos y los **datos de prueba**.
   Para usarla de verdad: ⚙️ Ajustes → **🧹 Empezar en limpio**.
