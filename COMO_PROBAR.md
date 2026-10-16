@@ -30,8 +30,9 @@ Son **inventados** (lotes `Z-9xx`, facturas `DEMO-…`), no son de la planta.
 3. Revisa la tabla **Rollos por número de parte y lote**: cuenta sola lo que antes contabas a pluma.
 4. Toca **✅ Terminar recepción**. Los que no escaneaste quedan como **Faltantes**.
 
-### 1·IA. Llenar la recepción con FOTO A LA LISTA (necesita la Parte C de PASOS_NUBE.md)
-1. **Nueva recepción → ⚡ Llenar rápido → 📷 Foto a la lista** (o **🖼️ Elegir fotos** si la lista tiene varias hojas).
+### 1·IA. Llenar la recepción con FOTO o PDF de la lista (necesita la Parte C de PASOS_NUBE.md)
+1. **Nueva recepción → ⚡ Llenar rápido → 📷 Foto a la lista** (o **🖼️ Elegir fotos** si la lista tiene varias hojas,
+   o **📄 Abrir PDF de la lista** si el proveedor la mandó en PDF; máximo 7 MB).
 2. La IA ignora palomitas, puntos y notas a mano, y llena el encabezado y los rollos.
 3. Revisa los grupos por número de parte: cada uno dice si **✅ cuadra** con el renglón "Total …" de la hoja.
 4. Si subes dos veces la misma hoja, o la factura ya estaba registrada, sale el aviso **DUPLICADO**.

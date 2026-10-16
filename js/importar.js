@@ -157,20 +157,22 @@ function recepcionConFactura(factura, excluirId) {
   return Store.all('recepciones').find((r) => r.id !== excluirId && mismaFactura(r.factura, factura)) || null;
 }
 
-// Junta lo que la IA leyó de cada foto en el mismo formato que el texto pegado
-function hojasIAaLista(hojas) {
+// Junta lo que la IA leyó de cada foto o PDF en el mismo formato que el texto pegado.
+// `nombres` dice cómo llamar a cada archivo en los avisos (ej. "Foto 2", "PDF lista.pdf").
+function hojasIAaLista(hojas, nombres = []) {
   const avisos = [];
   const buenas = [];
   hojas.forEach((hj, i) => {
-    const n = hojas.length > 1 ? `Foto ${i + 1}: ` : '';
+    const nombre = nombres[i] || `Foto ${i + 1}`;
+    const n = hojas.length > 1 ? `${nombre}: ` : '';
     if (!hj || hj.error) return avisos.push(n + ((hj && hj.error) || 'no se pudo leer.'));
     if (hj.es_lista_embarque === false || !(hj.rollos || []).length) return avisos.push(n + 'no parece una lista de embarque (no encontré rollos).');
     // ¿Es la misma hoja que otra foto? (casi todos los rollos se repiten)
     const set = new Set(hj.rollos.map((r) => sinEspacios(r.no_rollo)));
     const igual = buenas.find((b) => b.rollos.filter((r) => set.has(sinEspacios(r.no_rollo))).length >= Math.min(set.size, b.rollos.length) * 0.8);
-    if (igual) return avisos.push(`⚠️ ${n}es la MISMA hoja que la foto ${igual.num} (DUPLICADA): no la tomé en cuenta.`);
+    if (igual) return avisos.push(`⚠️ ${n}es la MISMA lista que ${igual.nombre} (DUPLICADA): no la tomé en cuenta.`);
     for (const a of hj.avisos || []) avisos.push(n + a);
-    buenas.push({ ...hj, num: i + 1 });
+    buenas.push({ ...hj, nombre });
   });
   if (!buenas.length) return { encabezado: {}, filas: [], totales: null, avisos, modo: 'ia' };
 
@@ -252,27 +254,50 @@ function encabezadoIA(hj) {
   return enc;
 }
 
+const MAX_PDF_MB = 7;
+const esPdf = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+
+// Archivo → texto base64 (para mandar el PDF tal cual)
+function archivoABase64(file) {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(String(lector.result).split(',')[1]);
+    lector.onerror = () => reject(lector.error);
+    lector.readAsDataURL(file);
+  });
+}
+
 async function leerFotosConIA(estado, files, alLeer) {
+  const grandes = files.filter((f) => esPdf(f) && f.size > MAX_PDF_MB * 1024 * 1024);
+  if (grandes.length) return toast(`El PDF "${grandes[0].name}" pesa más de ${MAX_PDF_MB} MB. Pide uno más ligero o tómale foto a la hoja.`, 'error');
   estado.leyendo = true;
   App.refrescar();
   try {
-    const imagenes = [];
+    const imagenes = [], nombres = [];
+    let nFoto = 0;
     for (const f of files.slice(0, 6)) {
-      // Grande y nítida para que se lean bien las letras chicas de la tabla
-      const url = await comprimirFoto(f, 2400, 0.85);
-      imagenes.push({ mime: 'image/jpeg', datos: url.split(',')[1] });
+      if (esPdf(f)) {
+        // El PDF se manda completo: la IA lee todas sus páginas
+        imagenes.push({ mime: 'application/pdf', datos: await archivoABase64(f) });
+        nombres.push(`PDF "${f.name}"`);
+      } else {
+        // Grande y nítida para que se lean bien las letras chicas de la tabla
+        const url = await comprimirFoto(f, 2400, 0.85);
+        imagenes.push({ mime: 'image/jpeg', datos: url.split(',')[1] });
+        nombres.push(`Foto ${++nFoto}`);
+      }
     }
     const resp = await Store.funcion('leer-lista', { imagenes });
-    const r = hojasIAaLista(resp.hojas || []);
+    const r = hojasIAaLista(resp.hojas || [], nombres);
     if (!r.filas.length) {
-      toast(r.avisos[0] || 'No encontré rollos en la foto.', 'error');
+      toast(r.avisos[0] || 'No encontré rollos en el archivo.', 'error');
       estado.avisos = r.avisos;
       return;
     }
     estado.avisos = r.avisos;
     alLeer(r);
   } catch (e) {
-    toast(e.message || 'No se pudo leer la foto.', 'error');
+    toast(e.message || 'No se pudo leer el archivo.', 'error');
   } finally {
     estado.leyendo = false;
     App.refrescar();
@@ -465,18 +490,19 @@ function crearParteDesdeDescripcion(id, desc, proveedor, almacen) {
 // Bloque reutilizable: foto con IA o pegar texto → revisar → (el que lo usa decide qué hacer con las filas)
 function bloquePegarLista(estado, { alLeer, textoBoton }) {
   const entrada = (attrs) => h('input', {
-    type: 'file', accept: 'image/*', class: 'oculto', disabled: estado.leyendo, ...attrs,
+    type: 'file', accept: 'image/*,application/pdf,.pdf', class: 'oculto', disabled: estado.leyendo, ...attrs,
     onchange: (e) => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) leerFotosConIA(estado, fs, alLeer); },
   });
   const conIA = NUBE ? h('div', { class: 'leer-ia' },
-    h('h3', {}, '🤖 Leer la foto con IA'),
+    h('h3', {}, '🤖 Leer la foto o el PDF con IA'),
     estado.leyendo
       ? h('div', { class: 'calc' }, '⏳ Leyendo la lista… puede tardar hasta un minuto. No cierres la pantalla.')
       : h('div', { class: 'botones-foto' },
-        h('label', { class: 'btn btn-grande btn-primario' }, '📷 Foto a la lista', entrada({ capture: 'environment' })),
-        h('label', { class: 'btn btn-grande' }, '🖼️ Elegir fotos (varias hojas)', entrada({ multiple: true })),
+        h('label', { class: 'btn btn-grande btn-primario' }, '📷 Foto a la lista', entrada({ accept: 'image/*', capture: 'environment' })),
+        h('label', { class: 'btn btn-grande' }, '🖼️ Elegir fotos (varias hojas)', entrada({ accept: 'image/*', multiple: true })),
+        h('label', { class: 'btn btn-grande' }, '📄 Abrir PDF de la lista', entrada({ accept: 'application/pdf,.pdf' })),
       ),
-    h('p', { class: 'tip' }, '💡 De frente y con buena luz, que se vea toda la tabla hasta el "Total general". Las palomitas y notas a mano no importan: se ignoran.'),
+    h('p', { class: 'tip' }, '💡 Foto: de frente y con buena luz, que se vea toda la tabla hasta el "Total general". Las palomitas y notas a mano no importan: se ignoran. PDF: el que manda el proveedor por correo; descárgalo primero al celular o a la PC.'),
     h('h3', {}, '📋 O pega el texto'),
   ) : null;
   return h('div', { class: 'pegar-lista' },

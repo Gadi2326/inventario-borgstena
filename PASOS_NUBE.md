@@ -41,7 +41,7 @@ Ya está publicada con **GitHub Pages**: **https://gadi2326.github.io/inventario
 
 ## Parte C · Leer la lista de embarque con IA (Gemini, gratis)
 
-La app manda la foto de la lista a una función de Supabase (`leer-lista`), y esa función se la pasa a Gemini (IA de Google).
+La app manda la foto (o el PDF) de la lista a una función de Supabase (`leer-lista`), y esa función se la pasa a Gemini (IA de Google).
 La clave de Google se guarda **solo en Supabase**, nunca en la página (la página es pública en GitHub).
 
 ### C1. Crear una cuenta de Google SOLO para la app
