@@ -72,12 +72,14 @@ function respuesta(cuerpo: unknown, status = 200) {
   return new Response(JSON.stringify(cuerpo), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
-// Revisa que quien llama haya iniciado sesión en la app
+// Revisa que quien llama haya iniciado sesión en la app (Supabase Auth confirma el token).
+// Así la función puede tener apagado "Verify JWT with legacy secret" sin quedar abierta.
 async function usuarioValido(req: Request) {
   const auth = req.headers.get('Authorization') || '';
   if (!auth.startsWith('Bearer ')) return false;
+  const apikey = req.headers.get('apikey') || Deno.env.get('SUPABASE_ANON_KEY') || '';
   const r = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/user`, {
-    headers: { Authorization: auth, apikey: Deno.env.get('SUPABASE_ANON_KEY') || '' },
+    headers: { Authorization: auth, apikey },
   });
   return r.ok;
 }

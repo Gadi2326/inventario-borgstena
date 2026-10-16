@@ -62,9 +62,11 @@ La clave de Google se guarda **solo en Supabase**, nunca en la página (la pági
 1. Abre el código: https://github.com/Gadi2326/inventario-borgstena/blob/main/supabase/functions/leer-lista/index.ts
    y toca el botón **Copy raw file** (el de los dos cuadritos, arriba a la derecha del código).
 2. supabase.com → tu proyecto → **Edge Functions** → **Deploy a new function** → **Via Editor**.
-3. Nombre de la función: `leer-lista` (exacto, con guion).
-4. Borra el ejemplo que trae, pega el código y toca **Deploy function**.
-5. Deja activada la opción **Verify JWT** (así solo la usan los que tienen usuario en la app).
+3. Borra el ejemplo que trae y pega el código.
+4. **Abajo**, en el cuadro del nombre (trae uno de ejemplo como "bright-worker"), escribe `leer-lista` (exacto, con guion)
+   **antes** de tocar **Deploy function**. Después ya no se puede cambiar la dirección.
+5. Ya subida: pestaña **Settings** → **apaga** "Verify JWT with legacy secret" → **Save changes**.
+   No queda abierta: el código revisa solo que quien la usa tenga sesión iniciada en la app.
 
 ### C5. Probar
 En la app: **Recepción → Nueva recepción → ⚡ Llenar rápido → 📷 Foto a la lista**.
